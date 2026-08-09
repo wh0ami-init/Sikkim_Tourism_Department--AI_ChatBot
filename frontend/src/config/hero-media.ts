@@ -4,5 +4,5 @@ export const heroVideo = {
   // Local example: "/videos/sikkim-hero.mp4"
   // URL example:   "https://your-cdn.example.com/sikkim-hero.mp4"
   src: "https://res.cloudinary.com/b2qszshm/video/upload/v1785038520/Bird_View_vpsosg.mp4",
-  poster: "/videos/sikkim-hero-poster.jpg",
+  poster: "/images/sikkim-inspires.png",
 };

@@ -381,8 +381,11 @@ async def _extract_text_vision_raw_image(image_bytes: bytes, mime_type: str) -> 
 
     # Browsers and mobile clients occasionally send application/octet-stream or
     # a slightly different MIME value even when the bytes are a valid image.
-    # Prefer the detected format so valid WhatsApp images are not discarded.
+    # Use the detected format; the browser-provided value is not trusted.
     detected_mime = _detect_image_mime(image_bytes, mime_type)
+    if detected_mime is None:
+        logger.warning("Uploaded circular image has no recognised file signature.")
+        return ""
     image_b64 = base64.b64encode(image_bytes).decode()
     try:
         text = await _transcribe_image(
@@ -394,15 +397,20 @@ async def _extract_text_vision_raw_image(image_bytes: bytes, mime_type: str) -> 
         return ""
 
 
-def _detect_image_mime(image_bytes: bytes, declared_mime: str) -> str:
-    """Return a safe image MIME type based on magic bytes when possible."""
+def _detect_image_mime(image_bytes: bytes, declared_mime: str) -> str | None:
+    """Return an image MIME type only when the bytes carry a recognised signature.
+
+    ``UploadFile.content_type`` is supplied by the client and is therefore not
+    evidence of a file's format.  Never promote an unrecognised byte stream to
+    an image based on that header alone.
+    """
     if image_bytes.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
     if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
     if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
         return "image/webp"
-    return declared_mime if declared_mime in _ALLOWED_IMAGE_MIME_TYPES else "image/jpeg"
+    return None
 
 
 def _clean_ocr_text(text: str) -> str:
@@ -528,6 +536,7 @@ async def ingest_uploaded_circular(
     if is_pdf:
         extracted_text = await _extract_text(file_bytes)
     else:
+        # ``is_image`` above guarantees a magic-byte-derived MIME type.
         extracted_text = await _extract_text_vision_raw_image(file_bytes, detected_mime)
 
     if not extracted_text:

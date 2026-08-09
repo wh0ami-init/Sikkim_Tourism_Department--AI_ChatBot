@@ -10,13 +10,13 @@ from app.config import Settings
 from app.services.circular_scraper import _is_allowed_url
 
 
-def test_health_reports_mock_db_mode(client):
+def test_health_reports_configured_db_mode(client):
     resp = client.get("/api/health")
     assert resp.status_code == 200
 
     body = resp.json()
     assert body["status"] == "ok"
-    assert body["db_mode"] == "mock"
+    assert body["db_mode"] == "mysql"
     assert "qdrant_mode" in body
     # No real keys are set in the test environment (see conftest.py) —
     # the health check should honestly reflect that.

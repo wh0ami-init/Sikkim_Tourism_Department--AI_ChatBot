@@ -9,11 +9,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 
 // Route-level splitting keeps the first Vercel page load focused on the page
-// the visitor requested instead of downloading every destination/demo view.
+// the visitor requested instead of downloading every view.
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Home = lazy(() => import("@/pages/home"));
 const Destinations = lazy(() => import("@/pages/destinations"));
-const Demo = lazy(() => import("@/pages/demo"));
 const Admin = lazy(() => import("@/pages/admin"));
 const AdminSecurity = lazy(() => import("@/pages/admin-security"));
 
@@ -25,7 +24,6 @@ function App() {
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/destinations" component={Destinations} />
-            <Route path="/demo" component={Demo} />
             <Route path="/admin" component={Admin} />
             <Route path="/admin/security" component={AdminSecurity} />
             <Route component={NotFound} />

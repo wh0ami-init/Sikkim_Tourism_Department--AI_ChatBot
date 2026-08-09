@@ -1,6 +1,5 @@
 """
-Tests for the read-only /api/destinations endpoints, backed by the seeded
-mock data in app/database/mock_data.py.
+Tests for the read-only /api/destinations endpoints.
 """
 
 VALID_CATEGORIES = {"nature", "culture", "adventure", "pilgrimage", "wildlife"}

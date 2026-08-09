@@ -32,3 +32,21 @@ async def test_scanned_pdf_joins_each_transcribed_page(monkeypatch):
         (transcriber, "data:image/png;base64,first-page"),
         (transcriber, "data:image/png;base64,second-page"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_bytes_that_only_claim_to_be_an_image():
+    """The multipart Content-Type header must not substitute for file sniffing."""
+    class Repo:
+        async def circular_exists(self, _pdf_hash):
+            return False
+
+    result = await circular_scraper.ingest_uploaded_circular(
+        Repo(),
+        file_bytes=b"not an image",
+        title="Road status",
+        category="road_status",
+        source_url="manual-upload:whatsapp",
+        mime_type="image/jpeg",
+    )
+    assert result["status"] == "rejected"
