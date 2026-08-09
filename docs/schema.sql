@@ -1,11 +1,10 @@
 -- ============================================================
 -- Sikkim Tourism Assistant — MySQL Schema
 -- ============================================================
--- Run this against the department's MySQL database when
--- USE_MOCK_DB is switched to false.
+-- Run this against the department's MySQL database before
+-- starting the app — MySQL is the only supported backend.
 --
 -- Notes:
---   • The `destinations` table mirrors mock_data.py exactly.
 --   • Conversations/messages are managed by the app; the
 --     department's existing tables do not need to be modified.
 --   • Adjust column sizes / charsets to match the existing DB

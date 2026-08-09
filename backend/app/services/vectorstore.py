@@ -72,7 +72,7 @@ def get_qdrant_client() -> QdrantClient:
     """
     Singleton Qdrant client.
 
-    - QDRANT_URL unset → in-memory (":memory:"), fastest for dev/mock mode
+    - QDRANT_URL unset → in-memory (":memory:"), fastest for local dev
     - QDRANT_URL set   → remote/local server (persistent across restarts)
     """
     if settings.qdrant_url:

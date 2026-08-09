@@ -1,15 +1,12 @@
 """
-MySQLRepository — real database backend for when the department's MySQL is available.
+MySQLRepository — the department's real MySQL database backend.
 
 HOW TO ACTIVATE:
-  1. Set USE_MOCK_DB=false in your .env file.
-  2. Fill in MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE.
-  3. Run the SQL schema in docs/schema.sql against the department's database.
+  1. Fill in MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
+     in your .env file (or your deployment platform's env vars).
+  2. Run the SQL schema in docs/schema.sql against the department's database.
 
-This previously raised NotImplementedError on every single method, which is
-why switching USE_MOCK_DB=false made every endpoint return a raw 500 with a
-Python traceback instead of a clean response. It is now a full working
-implementation matching docs/schema.sql exactly.
+Full working implementation matching docs/schema.sql exactly.
 """
 from __future__ import annotations
 

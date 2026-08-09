@@ -75,7 +75,7 @@ security review.
 | **Streaming AI chat**              | Visitor questions will be answered in real time via Server-Sent Events, grounded in the Department's destination and circular records. |
 | **Retrieval-Augmented Generation** | Gemini embeddings and a Qdrant vector store will retrieve the most relevant official data before Groq's language model composes a response. |
 | **Image-assisted queries**         | Visitors will be able to attach a photograph (JPEG/PNG/WebP), which will be interpreted through Gemini Vision in a Sikkim tourism context. |
-| **No mandatory external database** | The platform will run out-of-the-box against an in-memory mock catalogue and an in-memory Qdrant instance, suitable for evaluation before a MySQL instance is provisioned. |
+| **No separate vector database to run** | Qdrant runs in-memory by default (or remote if `QDRANT_URL` is set) — no separate service to provision for evaluation, though a MySQL database is required. |
 | **Administrator console**          | Authorised staff will be able to create, edit, and remove destinations; manage official circulars; and rotate their own credentials. |
 | **Circular ingestion**             | Road-status reports, cancellation orders, and general notices will be ingested automatically from the Department's website, or uploaded manually (PDF/JPG/PNG/WebP) when a document is never published online. |
 | **Responsive frontend**            | A React + Vite interface will present destinations, live weather, and themeable chat to visitors across desktop and mobile devices. |
@@ -95,7 +95,7 @@ security review.
                      │        FastAPI Backend        │
                      │                               │
                      │  ├─ Destination & conversation│
-                     │  │   repository (mock/MySQL)  │
+                     │  │   repository (MySQL)       │
                      │  ├─ Qdrant vector store       │
                      │  │   (in-memory or remote)    │
                      │  ├─ Gemini — embeddings &     │
@@ -189,7 +189,7 @@ never be committed to version control.
 | AI | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBEDDING_MODEL` | A Gemini key will be required for embeddings and image-assisted chat. |
 | Text chat | `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_FALLBACK_MODEL` | Groq will power the default text-response path. |
 | Optional AI | `ENABLE_PROMPT_GUARD`, `PROMPT_GUARD_MODEL`, `TAVILY_API_KEY`, `ENABLE_FOLLOWUPS` | These will remain disabled unless explicitly enabled in `.env`. |
-| Database | `USE_MOCK_DB`, `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE` | Mock data will be used by default; MySQL should be configured for persistent deployments. |
+| Database | `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE` | MySQL is required — the app connects to it on startup. |
 | Vector store | `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | `QDRANT_URL` should be left empty for in-memory mode. |
 | Browser access | `ALLOWED_ORIGINS`, `ALLOWED_METHODS`, `ALLOWED_HEADERS`, `ENVIRONMENT` | Production deployments will require explicit HTTPS origins; a wildcard CORS value will be rejected outright. |
 | Admin | `ADMIN_API_KEY` | This one-time, server-side bootstrap secret will be required to create the first administrator account. |
@@ -285,7 +285,7 @@ fetch.
 
 ## MySQL Setup
 
-For deployments requiring persistent storage:
+MySQL is required for every deployment (including local development):
 
 1. The schema will be created with:
 
@@ -293,8 +293,7 @@ For deployments requiring persistent storage:
    mysql -u root -p < docs/schema.sql
    ```
 
-2. `USE_MOCK_DB` should be set to `false`, and the corresponding `MYSQL_*`
-   values should be set in `backend/.env`.
+2. The `MYSQL_*` values should be set in `backend/.env`.
 
 3. A **new, empty** database may optionally be seeded from the development
    catalogue:
@@ -407,7 +406,7 @@ npm run build
 ```text
 backend/
   app/
-    database/       Mock and MySQL repositories
+    database/       MySQL repository
     models/         Pydantic API models and validation
     routers/         Chat and destination routes
     services/        RAG, vector store, admin auth, circular ingestion

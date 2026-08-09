@@ -1,17 +1,12 @@
 """
-|| Startup_Service || — populates the Qdrant vector store from the active repository
-(mock_db or MySQL) every time the server starts.
+|| Startup_Service || — populates the Qdrant vector store from MySQL every
+time the server starts.
 
 Flow:
-  1. Fetch all destinations from the repo (mock or MySQL — whichever is active)
+  1. Fetch all destinations from the MySQL repository
   2. Convert each destination into a LangChain Document with rich metadata
   3. Embed via Gemini gemini-embedding-001 and upsert into Qdrant
   4. Log summary
-
-This means:
-  • mock_db mode  → Qdrant is populated from DESTINATIONS in mock_data.py
-  • MySQL mode    → Qdrant is populated from the live department database
-  • Switching modes just requires restarting the server — no manual steps
 
 Also exposes `resync_vectorstore()` for the /api/admin/sync endpoint so an
 operator can trigger a live re-sync without a restart (useful when the MySQL
@@ -118,21 +113,9 @@ async def populate_vectorstore(repo: BaseRepository, *, force: bool = False) -> 
 
     destinations = await repo.list_destinations()
     if not destinations:
-        error_msg = (
-            f"CRITICAL: No destinations found in {settings.db_mode}. "
-            "Vector store will be EMPTY!"
-        )
+        error_msg = "CRITICAL: No destinations found in MySQL. Vector store will be EMPTY!"
         logger.error(error_msg)
-
-        if settings.db_mode == "mysql":
-            raise RuntimeError(
-                error_msg + " Check MySQL connection and schema."
-            )
-        # For mock mode, it's acceptable but still warn loudly
-        logger.warning(
-            "Running in mock mode with no destinations — RAG will not work."
-        )
-        return 0
+        raise RuntimeError(error_msg + " Check MySQL connection and schema.")
 
     documents = [_destination_to_document(d) for d in destinations]
 

@@ -25,7 +25,7 @@ from app.models.schemas import (
 MessageRole = Literal["user", "assistant"]
 
 class BaseRepository(ABC):
-    """Common interface for all data storage backends (mock in-memory, MySQL, …)."""
+    """Common interface for the data storage backend (MySQL)."""
 
     @abstractmethod
     async def admin_user_exists(self) -> bool:

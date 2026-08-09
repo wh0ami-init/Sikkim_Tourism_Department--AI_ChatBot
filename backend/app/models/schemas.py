@@ -144,7 +144,7 @@ class Circular(BaseModel):
     """
 
     # None until save_circular() persists it and assigns the real primary key
-    # (auto-increment in MySQL, list index+1 in mock mode).
+    # (auto-increment in MySQL).
     id: int | None = None
     title: str
     category: Literal["road_status", "cancellation_order", "notice"]
@@ -170,7 +170,7 @@ class TravelAgency(BaseModel):
     """
 
     # None until save_travel_agency() persists it and assigns the real
-    # primary key (auto-increment in MySQL, list index+1 in mock mode).
+    # primary key (auto-increment in MySQL).
     id: int | None = None
     name: str
     registration_number: str

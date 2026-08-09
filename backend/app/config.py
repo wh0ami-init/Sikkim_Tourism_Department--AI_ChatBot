@@ -12,9 +12,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Data_Retrieval--Conf.
-    use_mock_db: bool = True
-
     # MySQL--Conf.
     mysql_host: str = "localhost"
     mysql_port: int = 3306
@@ -93,7 +90,8 @@ class Settings(BaseSettings):
     # Database_Mode--Validator
     @property
     def db_mode(self) -> str:
-        return "mock" if self.use_mock_db else "mysql"
+        """Database backend in use. MySQL is the only supported backend."""
+        return "mysql"
 
     @property
     def mysql_ssl_ca_path(self) -> str:
@@ -140,7 +138,7 @@ class Settings(BaseSettings):
             raise ValueError("In production, all allowed origins must use 'HTTPS' for security reasons.")
         if self.max_admin_upload_request_bytes < self.circulars_max_pdf_bytes:
             raise ValueError("MAX_ADMIN_UPLOAD_REQUEST_BYTES must be at least CIRCULARS_MAX_PDF_BYTES.")
-        if not self.use_mock_db and self.mysql_host not in {"localhost", "127.0.0.1", "::1"}:
+        if self.mysql_host not in {"localhost", "127.0.0.1", "::1"}:
             if not Path(self.mysql_ssl_ca_path).is_file():
                 raise ValueError("MYSQL_SSL_CA must point to a CA certificate for remote MySQL.")
         # This is an official-data feed, not a general web crawler. Keep the
@@ -149,11 +147,11 @@ class Settings(BaseSettings):
             raise ValueError("CIRCULARS_ALLOWED_HOST must be sikkimtourism.gov.in.")
         notice_url = urlparse(self.circulars_notice_url)
         if (
-            notice_url.scheme != "https"
-            or notice_url.hostname != "sikkimtourism.gov.in"
-            or notice_url.port not in (None, 443)
-            or notice_url.username
-            or notice_url.password
+                notice_url.scheme != "https"
+                or notice_url.hostname != "sikkimtourism.gov.in"
+                or notice_url.port not in (None, 443)
+                or notice_url.username
+                or notice_url.password
         ):
             raise ValueError(
                 "CIRCULARS_NOTICE_URL must be an HTTPS URL on sikkimtourism.gov.in."
