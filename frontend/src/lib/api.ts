@@ -147,6 +147,16 @@ export interface Circular {
   ingested_at: string;
 }
 
+/** Small, safe public projection of an official circular. */
+export interface Advisory {
+  id: number;
+  title: string;
+  category: "road_status" | "cancellation_order" | "notice";
+  district: string | null;
+  issue_date: string;
+  source_url: string;
+}
+
 export interface AdminDashboard {
   destination_count: number;
   recent_circulars: Circular[];
@@ -235,6 +245,10 @@ interface RawMessage {
   content: string;
   created_at: string;
   client_message_id?: string | null;
+}
+
+export function fetchAdvisories(signal?: AbortSignal): Promise<Advisory[]> {
+  return apiFetch<Advisory[]>("/destinations/advisories?limit=3", { signal });
 }
 
 // ── Mappers (backend snake_case → frontend camelCase) ────────────────────────

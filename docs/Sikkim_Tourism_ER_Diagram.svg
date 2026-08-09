@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050" role="img" aria-labelledby="title desc">
+  <title id="title">Sikkim Tourism Assistant Entity Relationship Diagram</title>
+  <desc id="desc">Database entities for destinations, circulars, conversations, messages, admin users and travel agencies. Conversations have one-to-many messages.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f6f8f5}.heading{font:700 34px Georgia,serif;fill:#143c32}.sub{font:16px Arial,sans-serif;fill:#587066}.box{fill:#fff;stroke:#1b705b;stroke-width:2}.head{fill:#176451}.name{font:700 18px Arial,sans-serif;fill:#fff}.field{font:15px 'Courier New',monospace;fill:#263b33}.pk{fill:#b97d1a;font-weight:700}.fk{fill:#176451;font-weight:700}.line{stroke:#c68a27;stroke-width:3;fill:none}.card{fill:#fff;stroke:#d5e2da;stroke-width:1}.legend{font:14px Arial,sans-serif;fill:#587066}
+    </style>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity=".12"/></filter>
+  </defs>
+  <rect class="bg" width="1600" height="1050"/>
+  <text class="heading" x="80" y="78">Sikkim Tourism Assistant — Entity Relationship Diagram</text>
+  <text class="sub" x="80" y="110">MySQL operational database · Version 1.0 · Team Nexus · ICFAI University Sikkim</text>
+
+  <g filter="url(#shadow)"><rect class="box" x="80" y="190" width="340" height="300" rx="12"/><path class="head" d="M92 190h316a12 12 0 0 1 12 12v43H80v-43a12 12 0 0 1 12-12z"/><text class="name" x="105" y="224">destinations</text><text class="field" x="105" y="278"><tspan class="pk">PK</tspan> id : INT UNSIGNED</text><text class="field" x="105" y="310">name, slug [UNIQUE]</text><text class="field" x="105" y="342">category, district, location</text><text class="field" x="105" y="374">description, best_time</text><text class="field" x="105" y="406">permit_required, permit_info</text><text class="field" x="105" y="438">image_url, latitude, longitude</text><text class="field" x="105" y="470">created_at, updated_at</text></g>
+
+  <g filter="url(#shadow)"><rect class="box" x="80" y="620" width="340" height="275" rx="12"/><path class="head" d="M92 620h316a12 12 0 0 1 12 12v43H80v-43a12 12 0 0 1 12-12z"/><text class="name" x="105" y="654">circulars</text><text class="field" x="105" y="708"><tspan class="pk">PK</tspan> id : INT UNSIGNED</text><text class="field" x="105" y="740">title, category, district</text><text class="field" x="105" y="772">issue_date, source_url</text><text class="field" x="105" y="804">pdf_hash [UNIQUE]</text><text class="field" x="105" y="836">extracted_text, ingested_at</text></g>
+
+  <g filter="url(#shadow)"><rect class="box" x="620" y="235" width="340" height="185" rx="12"/><path class="head" d="M632 235h316a12 12 0 0 1 12 12v43H620v-43a12 12 0 0 1 12-12z"/><text class="name" x="645" y="269">conversations</text><text class="field" x="645" y="323"><tspan class="pk">PK</tspan> id : CHAR(36) / UUID</text><text class="field" x="645" y="355">created_at : DATETIME</text></g>
+
+  <g filter="url(#shadow)"><rect class="box" x="1160" y="190" width="360" height="300" rx="12"/><path class="head" d="M1172 190h336a12 12 0 0 1 12 12v43h-360v-43a12 12 0 0 1 12-12z"/><text class="name" x="1185" y="224">messages</text><text class="field" x="1185" y="278"><tspan class="pk">PK</tspan> id : CHAR(36) / UUID</text><text class="field" x="1185" y="310"><tspan class="fk">FK</tspan> conversation_id : CHAR(36)</text><text class="field" x="1185" y="342">role : ENUM(user, assistant)</text><text class="field" x="1185" y="374">content : LONGTEXT</text><text class="field" x="1185" y="406">client_message_id [UNIQUE*]</text><text class="field" x="1185" y="438">created_at : DATETIME</text></g>
+
+  <g filter="url(#shadow)"><rect class="box" x="585" y="635" width="375" height="220" rx="12"/><path class="head" d="M597 635h351a12 12 0 0 1 12 12v43H585v-43a12 12 0 0 1 12-12z"/><text class="name" x="610" y="669">admin_users</text><text class="field" x="610" y="723"><tspan class="pk">PK</tspan> id : INT UNSIGNED</text><text class="field" x="610" y="755">username [UNIQUE]</text><text class="field" x="610" y="787">password_hash : VARCHAR(255)</text><text class="field" x="610" y="819">created_at, updated_at</text></g>
+
+  <g filter="url(#shadow)"><rect class="box" x="1160" y="620" width="360" height="275" rx="12"/><path class="head" d="M1172 620h336a12 12 0 0 1 12 12v43h-360v-43a12 12 0 0 1 12-12z"/><text class="name" x="1185" y="654">travel_agencies</text><text class="field" x="1185" y="708"><tspan class="pk">PK</tspan> id : INT UNSIGNED</text><text class="field" x="1185" y="740">name, proprietor, district</text><text class="field" x="1185" y="772">registration_number [UNIQUE]</text><text class="field" x="1185" y="804">contact, address, grade</text><text class="field" x="1185" y="836">email_or_website, synced_at</text></g>
+
+  <path class="line" d="M960 327H1160"/><circle cx="960" cy="327" r="7" fill="#c68a27"/><path d="M1147 317l13 10-13 10" fill="none" stroke="#c68a27" stroke-width="3"/><rect class="card" x="1011" y="289" width="98" height="26" rx="5"/><text class="legend" x="1021" y="307">1 : many</text>
+  <text class="sub" x="620" y="465">Each conversation may contain many messages.</text>
+  <rect class="card" x="80" y="950" width="1440" height="55" rx="10"/><text class="legend" x="105" y="984"><tspan class="pk">PK</tspan> Primary Key    <tspan class="fk">FK</tspan> Foreign Key    * Unique composite key: (conversation_id, client_message_id). Other entities are independently managed Department records with no direct relational foreign keys in the current schema.</text>
+</svg>

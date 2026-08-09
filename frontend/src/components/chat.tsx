@@ -6,7 +6,6 @@ import {
     Send,
     Loader2,
     MapPin,
-    Wind,
     MountainSnow,
     Calendar,
     ChevronRight,
@@ -44,9 +43,9 @@ const STARTERS = [
         eyebrow: "Timing",
     },
     {
-        text: "Suggest a peaceful monastery to visit.",
-        icon: Wind,
-        eyebrow: "Culture",
+        text: "Plan a 3-day Sikkim trip for me.",
+        icon: Calendar,
+        eyebrow: "Trip planner",
     },
     {
         text: "How do I reach Gurudongmar Lake?",

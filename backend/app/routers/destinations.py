@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database.base import BaseRepository
 from app.database.factory import get_repo
-from app.models.schemas import Destination, DestinationSummary, DestinationsListResponse
+from app.models.schemas import AdvisorySummary, Destination, DestinationSummary, DestinationsListResponse
 
 router = APIRouter()
 
@@ -62,6 +62,31 @@ async def list_categories():
     return {"categories": sorted(VALID_CATEGORIES)}
 
 
+@router.get("/advisories", response_model=list[AdvisorySummary])
+async def list_public_advisories(
+        limit: int = Query(3, ge=1, le=5),
+        repo: BaseRepository = Depends(get_repo),
+):
+    """Return a compact, read-only feed of the latest official notices.
+
+    This is intentionally a projection rather than the admin circular API: a
+    visitor needs the title, date, area, category, and official source—not OCR
+    text or internal ingestion details.
+    """
+    circulars = await repo.list_circulars(limit=limit)
+    return [
+        AdvisorySummary(
+            id=circular.id or 0,
+            title=circular.title,
+            category=circular.category,
+            district=circular.district,
+            issue_date=circular.issue_date,
+            source_url=circular.source_url,
+        )
+        for circular in circulars
+    ]
+
+
 # Python_Version_Integrate_Get_Destination--Endpoint
 @router.get("/{destination_id}", response_model=Destination)
 async def get_destination(
@@ -72,4 +97,3 @@ async def get_destination(
     if not destination:
         raise HTTPException(status_code=404, detail="Destination not found.")
     return destination
-

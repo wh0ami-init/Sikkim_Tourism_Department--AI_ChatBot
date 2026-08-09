@@ -157,6 +157,21 @@ class Circular(BaseModel):
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class AdvisorySummary(BaseModel):
+    """Public, minimal view of a time-sensitive official advisory.
+
+    Deliberately excludes the full OCR text, file hash, and ingestion metadata
+    used by administrative workflows.
+    """
+
+    id: int
+    title: str
+    category: Literal["road_status", "cancellation_order", "notice"]
+    district: str | None = None
+    issue_date: str
+    source_url: str
+
+
 # ── Travel Agency ────────────────────────────────────────────────────────
 
 class TravelAgency(BaseModel):

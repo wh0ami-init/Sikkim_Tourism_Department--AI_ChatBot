@@ -51,6 +51,12 @@ def test_categories_endpoint_lists_all_five(client):
     assert set(resp.json()["categories"]) == VALID_CATEGORIES
 
 
+def test_public_advisories_are_a_safe_empty_feed_when_no_records_exist(client):
+    response = client.get("/api/destinations/advisories")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_search_by_name(client):
     resp = client.get("/api/destinations/", params={"search": "Gangtok"})
     assert resp.status_code == 200

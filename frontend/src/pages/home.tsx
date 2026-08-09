@@ -11,8 +11,10 @@ import {
   Sparkles,
   Leaf,
   Landmark,
+  AlertTriangle,
+  CalendarDays,
 } from "lucide-react";
-import { fetchDestinations, type DestinationSummary } from "@/lib/api";
+import { fetchAdvisories, fetchDestinations, type Advisory, type DestinationSummary } from "@/lib/api";
 import { heroVideo } from "@/config/hero-media";
 
 const gridContainerVariants: Variants = {
@@ -72,6 +74,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [popularDestinations, setPopularDestinations] = useState<DestinationSummary[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [advisories, setAdvisories] = useState<Advisory[]>([]);
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [taglineVisible, setTaglineVisible] = useState(true);
 
@@ -83,6 +86,19 @@ export default function Home() {
           if (err instanceof Error && err.name === "AbortError") return;
           console.error("Failed to load popular destinations:", err);
           setLoadError("Could not load destinations. Please refresh the page.");
+        });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchAdvisories(controller.signal)
+        .then(setAdvisories)
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name === "AbortError") return;
+          // Advisories are an enhancement; the visitor site remains useful if
+          // the feed is temporarily unavailable.
+          console.error("Failed to load official advisories:", err);
         });
     return () => controller.abort();
   }, []);
@@ -226,6 +242,45 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {advisories.length > 0 && (
+          <section className="container mx-auto px-4 pt-10 sm:pt-14" aria-labelledby="official-advisories">
+            <div className="rounded-[2rem] border border-amber-300/45 bg-amber-50/75 p-5 shadow-[0_16px_40px_rgba(146,64,14,0.08)] backdrop-blur-xl dark:border-amber-400/20 dark:bg-amber-950/20 sm:p-7">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800/75 dark:text-amber-300/75">Official updates</p>
+                    <h2 id="official-advisories" className="font-serif text-xl font-bold text-foreground">Travel advisories and notices</h2>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">Check the issue date before travelling.</p>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                {advisories.map((advisory) => {
+                  const officialSource = advisory.source_url.startsWith("https://sikkimtourism.gov.in/");
+                  return (
+                    <article key={advisory.id} className="rounded-2xl border border-amber-700/10 bg-background/70 p-4 dark:bg-card/70">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                        <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                        {advisory.issue_date} · {advisory.category.replace("_", " ")}
+                      </div>
+                      <h3 className="mt-2 font-semibold text-foreground">{advisory.title}</h3>
+                      {advisory.district && <p className="mt-1 text-sm text-muted-foreground">{advisory.district} District</p>}
+                      {officialSource && (
+                        <a href={advisory.source_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline">
+                          View official source
+                        </a>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="container mx-auto px-4 py-14 sm:py-20">
           <div className="rounded-[2rem] border border-border/70 bg-white/72 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-card/72 sm:p-8 lg:p-10">
