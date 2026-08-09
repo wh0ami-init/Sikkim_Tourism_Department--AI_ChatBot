@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime
 
 import mysql.connector
@@ -431,6 +432,26 @@ class MySQLRepository(BaseRepository):
         new_id = await asyncio.to_thread(_upsert)
         return agency.model_copy(update={"id": new_id})
 
+    @staticmethod
+    def _clean_agency_search_query(query: str) -> str:
+        """
+        Strip conversational filler AND generic domain words (reusing the
+        same _SEARCH_STOP_WORDS already used by the LIKE fallback below)
+        before handing the query to MySQL's FULLTEXT search. Left in, these
+        compete for relevance score against the actual agency name — e.g.
+        asking "...travel agency?" was found in production to rank agencies
+        whose name literally contains the word "Agency" ABOVE the actual
+        agency being asked about, pushing the correct one out of the
+        top-`limit` results entirely even though it's a clean, unambiguous
+        name match. Stripping these keeps only the name-identifying words.
+        """
+        tokens = re.findall(r"[A-Za-z0-9&]+", query)
+        kept = [t for t in tokens if t.lower() not in _SEARCH_STOP_WORDS]
+        # If stripping stopwords left nothing (e.g. the whole message WAS
+        # generic, like "tell me about travel agencies"), fall back to the
+        # original raw query rather than searching on an empty string.
+        return " ".join(kept) if kept else query
+
     async def search_travel_agencies(self, query: str, limit: int = 5) -> list[TravelAgency]:
         """
         Primary path: MySQL's own FULLTEXT search (NATURAL LANGUAGE MODE)
@@ -446,19 +467,27 @@ class MySQLRepository(BaseRepository):
         free text and does its own relevance scoring, so there's no fixed
         token budget to overflow.
 
+        Before that, we strip conversational filler and generic domain
+        words (see _clean_agency_search_query / _SEARCH_STOP_WORDS) — otherwise a phrase like
+        "...travel agency?" can outrank the very agency being asked about
+        if some *other* agency's name happens to literally contain the
+        word "Agency" (confirmed bug: real-world query returned zero trace
+        of the correct agency in the top 5 until this stripping was added).
+
         Fallback: FULLTEXT's own rules (default 4-character minimum word
         length in InnoDB, the 50% "too common" rule) can occasionally miss
         short or highly generic queries. If FULLTEXT returns nothing, fall
         back to the previous LIKE + Python token-overlap scoring so a
         short/unusual query still has a chance of matching.
         """
+        cleaned_query = self._clean_agency_search_query(query)
         fulltext_rows = await asyncio.to_thread(
             self._query,
             "SELECT *, MATCH(name, proprietor) AGAINST (%s IN NATURAL LANGUAGE MODE) AS relevance "
             "FROM travel_agencies "
             "WHERE MATCH(name, proprietor) AGAINST (%s IN NATURAL LANGUAGE MODE) "
             "ORDER BY relevance DESC LIMIT %s",
-            (query, query, limit),
+            (cleaned_query, cleaned_query, limit),
         )
         if fulltext_rows:
             return [_row_to_travel_agency(r) for r in fulltext_rows]
