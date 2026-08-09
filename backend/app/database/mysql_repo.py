@@ -50,17 +50,6 @@ logger = logging.getLogger(__name__)
 # "what"/"contact"/"info" before ever reaching "enchanting" — the agency's
 # actual name never makes it into the SQL WHERE clause, so the row is
 # never even fetched into the candidate pool, let alone scored.
-_SEARCH_STOP_WORDS = frozenset({
-    "the", "and", "for", "of", "in", "on", "at", "to", "a", "an",
-    "is", "are", "was", "were", "do", "does", "did", "have", "has", "had",
-    "you", "your", "me", "my", "please", "can", "could", "would", "should",
-    "what", "who", "where", "when", "how", "which", "any", "some",
-    "tell", "give", "get", "know", "find", "show", "provide", "share",
-    "contact", "details", "detail", "information", "info", "number",
-    "registration", "reg", "about", "with", "this", "that", "there",
-    "agency", "agencies", "travel", "tour", "tours", "operator",
-})
-
 
 def _row_to_circular(row: dict) -> Circular:
     issue_date = row["issue_date"]
@@ -432,106 +421,89 @@ class MySQLRepository(BaseRepository):
         new_id = await asyncio.to_thread(_upsert)
         return agency.model_copy(update={"id": new_id})
 
-    @staticmethod
-    def _clean_agency_search_query(query: str) -> str:
+    async def get_travel_agency_by_name(
+            self, name: str, district: str | None = None
+    ) -> TravelAgency | None:
         """
-        Strip conversational filler AND generic domain words (reusing the
-        same _SEARCH_STOP_WORDS already used by the LIKE fallback below)
-        before handing the query to MySQL's FULLTEXT search. Left in, these
-        compete for relevance score against the actual agency name — e.g.
-        asking "...travel agency?" was found in production to rank agencies
-        whose name literally contains the word "Agency" ABOVE the actual
-        agency being asked about, pushing the correct one out of the
-        top-`limit` results entirely even though it's a clean, unambiguous
-        name match. Stripping these keeps only the name-identifying words.
+        Exact, deterministic agency-name lookup.
+
+        This is intentionally separate from FULLTEXT search.  A question such
+        as "details of Sikkim Tours & Travels" is an entity lookup, not a
+        relevance-ranking problem.  If the registered name exists, return that
+        row directly so the LLM never has to guess which candidate was meant.
         """
-        tokens = re.findall(r"[A-Za-z0-9&]+", query)
-        kept = [t for t in tokens if t.lower() not in _SEARCH_STOP_WORDS]
-        # If stripping stopwords left nothing (e.g. the whole message WAS
-        # generic, like "tell me about travel agencies"), fall back to the
-        # original raw query rather than searching on an empty string.
-        return " ".join(kept) if kept else query
+        clauses = ["LOWER(TRIM(name)) = LOWER(TRIM(%s))"]
+        params: list = [name.strip()]
+        if district:
+            values = district_filter_values(district)
+            if not values:
+                return None
+            placeholders = ", ".join(["%s"] * len(values))
+            clauses.append(f"LOWER(TRIM(district)) IN ({placeholders})")
+            params.extend(values)
+        rows = await asyncio.to_thread(
+            self._query,
+            f"SELECT * FROM travel_agencies WHERE {' AND '.join(clauses)} LIMIT 1",
+            tuple(params),
+        )
+        return _row_to_travel_agency(rows[0]) if rows else None
 
     async def search_travel_agencies(self, query: str, limit: int = 5) -> list[TravelAgency]:
         """
-        Primary path: MySQL's own FULLTEXT search (NATURAL LANGUAGE MODE)
-        against the `ft_travel_agencies` index on (name, proprietor) —
-        already defined in schema.sql but previously unused. This lets
-        MySQL itself handle relevance ranking and common-word suppression
-        (its built-in 50% rule already deprioritises "tours"/"travels"
-        since they appear in most rows) instead of us hand-rolling a
-        token/stop-word heuristic in Python. A hand-rolled token cap is
-        fragile by construction — any wording change to a natural question
-        can silently drop the very word that identifies the agency before
-        the query ever reaches SQL. FULLTEXT takes the whole question as
-        free text and does its own relevance scoring, so there's no fixed
-        token budget to overflow.
+        Broad candidate retrieval for the entity resolver.
 
-        Before that, we strip conversational filler and generic domain
-        words (see _clean_agency_search_query / _SEARCH_STOP_WORDS) — otherwise a phrase like
-        "...travel agency?" can outrank the very agency being asked about
-        if some *other* agency's name happens to literally contain the
-        word "Agency" (confirmed bug: real-world query returned zero trace
-        of the correct agency in the top 5 until this stripping was added).
-
-        Fallback: FULLTEXT's own rules (default 4-character minimum word
-        length in InnoDB, the 50% "too common" rule) can occasionally miss
-        short or highly generic queries. If FULLTEXT returns nothing, fall
-        back to the previous LIKE + Python token-overlap scoring so a
-        short/unusual query still has a chance of matching.
+        IMPORTANT: this method is *candidate retrieval*, not final identity
+        resolution.  It deliberately preserves words such as ``tour``,
+        ``tours`` and ``travels`` because they may be part of the actual
+        registered business name.  The resolver performs the final exact /
+        normalized / fuzzy ranking in Python.
         """
-        cleaned_query = self._clean_agency_search_query(query)
+        raw = " ".join(query.split())
+        if not raw:
+            return []
+
+        # Exact case-insensitive name match is the safest and cheapest path.
+        exact = await self.get_travel_agency_by_name(raw)
+        if exact:
+            return [exact]
+
+        # FULLTEXT gets a wider candidate pool than the old top-5 query.
+        # The resolver will decide which candidate, if any, is safe to use.
         fulltext_rows = await asyncio.to_thread(
             self._query,
             "SELECT *, MATCH(name, proprietor) AGAINST (%s IN NATURAL LANGUAGE MODE) AS relevance "
             "FROM travel_agencies "
             "WHERE MATCH(name, proprietor) AGAINST (%s IN NATURAL LANGUAGE MODE) "
             "ORDER BY relevance DESC LIMIT %s",
-            (cleaned_query, cleaned_query, limit),
+            (raw, raw, max(limit, 25)),
         )
         if fulltext_rows:
-            return [_row_to_travel_agency(r) for r in fulltext_rows]
+            return [_row_to_travel_agency(r) for r in fulltext_rows[:limit]]
 
-        # ── Fallback: LIKE + Python token-overlap scoring ──────────────────
-        # NOTE: the WHERE clause below is deliberately broad (OR across all
-        # tokens) just to pull a candidate pool from the DB — it is NOT the
-        # final ranking. Words like "tour"/"tours"/"travel"/"travels" appear
-        # in nearly every registered agency's name, so if we returned rows
-        # straight from an unordered "LIMIT 5" against that OR clause, a
-        # query like "bayul tours and travels" would almost never surface
-        # Bayul specifically. We fetch a wider pool, then score/sort by real
-        # token overlap in Python before slicing to `limit`, so the
-        # actually-matching agency wins.
+        # LIKE fallback: use every meaningful token, but fetch a large pool and
+        # rank it in Python.  This avoids the old bug where an unordered LIMIT
+        # could fill the pool with unrelated agencies containing generic words.
         tokens = [
-            t for t in query.lower().split()
-            if len(t) > 2 and t not in _SEARCH_STOP_WORDS
-        ][:10]
+            t for t in re.findall(r"[A-Za-z0-9]+", raw.casefold())
+            if len(t) > 1 and t not in {"the", "and", "for", "of", "in", "on", "at", "to", "a", "an"}
+        ][:20]
         if not tokens:
             return []
-        clauses = []
+
+        clauses: list[str] = []
         params: list = []
         for token in tokens:
-            escaped_token = token.replace("!", "!!").replace("%", "!%").replace("_", "!_")
-            like = f"%{escaped_token}%"
+            escaped = token.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+            like = f"%{escaped}%"
             clauses.append("(LOWER(name) LIKE %s ESCAPE '!' OR LOWER(proprietor) LIKE %s ESCAPE '!')")
             params.extend([like, like])
-        where = " OR ".join(clauses)
-        candidate_pool = max(limit * 40, 200)
+
         rows = await asyncio.to_thread(
             self._query,
-            f"SELECT * FROM travel_agencies WHERE {where} LIMIT %s",
-            (*params, candidate_pool),
+            f"SELECT * FROM travel_agencies WHERE {' OR '.join(clauses)} ORDER BY name ASC LIMIT %s",
+            (*params, max(limit, 100)),
         )
-        agencies = [_row_to_travel_agency(r) for r in rows]
-
-        scored: list[tuple[int, TravelAgency]] = []
-        for agency in agencies:
-            haystack = f"{agency.name} {agency.proprietor or ''}".lower()
-            score = sum(1 for t in tokens if t in haystack)
-            if score:
-                scored.append((score, agency))
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [agency for _, agency in scored[:limit]]
+        return [_row_to_travel_agency(r) for r in rows[:limit]]
 
     # ── Destinations ────────────────────────────────────────────────────────
 

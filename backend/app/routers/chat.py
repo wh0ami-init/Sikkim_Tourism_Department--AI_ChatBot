@@ -33,6 +33,7 @@ from app.database.factory import get_repo
 from app.districts import district_filter_values, normalize_district
 from app.limiting import limiter
 from app.models.schemas import ChatRequest, ConversationResponse, Message
+from app.services.entity_resolver import resolve_travel_agency
 from app.services.rag_chain import (
     stream_rag_response,
     stream_rag_response_with_image,
@@ -119,6 +120,10 @@ def _needs_agency_lookup(message: str) -> bool:
     text = " ".join(message.lower().split())
     if any(phrase in text for phrase in _AGENCY_LOOKUP_PHRASES):
         return True
+    # Generic recommendation/list questions must not enter the single-entity
+    # resolver.  Those should use the directory/RAG path instead.
+    if any(word in text for word in ("recommend", "recommended", "suggest", "best", "package", "itinerary")):
+        return False
     if "agency" in text or "agencies" in text:
         return True
     has_entity_word = any(w in text for w in _AGENCY_ENTITY_WORDS)
@@ -127,7 +132,7 @@ def _needs_agency_lookup(message: str) -> bool:
         return True
     if (
             has_entity_word
-            and len(text.split()) <= 6
+            and len(text.split()) <= 8
             and not any(w in text for w in _AGENCY_GENERIC_WORDS)
     ):
         return True
@@ -284,6 +289,42 @@ async def _build_latest_circulars_context(
             f"(Source: {c.source_url})"
         )
     return "\n".join(lines)
+
+
+def _format_verified_agency(agency) -> str:
+    """Render a verified MySQL agency row without an LLM rewriting its facts."""
+    lines = [f"**{agency.name}**"]
+    fields = (
+        ("Registration No.", agency.registration_number),
+        ("Proprietor", agency.proprietor),
+        ("District", agency.district),
+        ("Grade", agency.grade),
+        ("Contact", agency.contact),
+        ("Email / Website", agency.email_or_website),
+        ("Address", agency.address),
+        ("Date of Issue", agency.date_of_issue),
+        ("Renewed Upto", agency.renewed_upto),
+    )
+    for label, value in fields:
+        if value not in (None, ""):
+            lines.append(f"- {label}: {value}")
+    if len(lines) == 1:
+        lines.append("- No additional official details are currently on file.")
+    return "\n".join(lines)
+
+
+def _format_agency_resolution_failure(resolution) -> str:
+    if resolution.status == "ambiguous" and resolution.candidates:
+        names = ", ".join(a.name for a in resolution.candidates[:5])
+        return (
+            "I found several travel-agency records that could match that name, so I won't guess. "
+            f"Possible matches: {names}. Please give me the exact agency name or district."
+        )
+    return (
+        "I couldn't find a sufficiently reliable match for that travel agency in the official "
+        "department directory, so I won't invent its registration number or contact details. "
+        "Please check the agency name or give me its district."
+    )
 
 
 async def _build_agency_context(repo: BaseRepository, message: str, *, limit: int = 5) -> str:
@@ -544,8 +585,26 @@ async def send_message(
     async def event_generator():
         nonlocal assistant_chunks
         try:
+            # High-risk structured agency lookups are answered deterministically
+            # from MySQL.  Do not send them through the LLM: registration numbers,
+            # phone numbers and addresses are database facts, not language-model
+            # facts.
+            if not has_image and _needs_agency_lookup(body.message) and not _needs_agency_directory_listing(body.message, history):
+                resolution = await resolve_travel_agency(
+                    repo,
+                    body.message,
+                    district=_extract_district(body.message),
+                )
+                if resolution.status == "matched" and resolution.agency:
+                    deterministic = _format_verified_agency(resolution.agency)
+                else:
+                    deterministic = _format_agency_resolution_failure(resolution)
+                assistant_chunks.append(deterministic)
+                yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                return
+
             if has_image:
-                # Vision path — Gemini 1.5 Flash multimodal
+                # Vision path — Gemini multimodal
                 stream = stream_rag_response_with_image(
                     user_message=body.message,
                     history_messages=history,
