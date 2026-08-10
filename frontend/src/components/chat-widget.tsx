@@ -23,12 +23,18 @@ const GREETINGS = [
 
 
 
+/* Keep this in sync with Tailwind's `sm` breakpoint (40rem / 640px). The
+   fullscreen toggle is a desktop-only affordance — below this width the
+   panel is already pinned edge-to-edge, so there's nothing to "expand". */
+const MOBILE_BREAKPOINT_QUERY = "(max-width: 639px)";
+
 /* ── Main widget ─────────────────────────────────────────────────────────── */
 export function ChatWidget() {
   const theme = useChatTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const greeting = useTypewriter(GREETINGS);
 
   /* Gentle one-time hint that fades in 3s after page load and never repeats.
@@ -37,6 +43,48 @@ export function ChatWidget() {
     const t = setTimeout(() => setShowHint(true), 3500);
     return () => clearTimeout(t);
   }, []);
+
+  /* Track the viewport instead of assuming it. Previously `isFullscreen`
+     was only ever flipped off from the header's "minimize" button, which
+     itself is hidden below `sm`. So if a visitor went fullscreen on a wide
+     window and then just resized it down (or opened dev tools, rotated a
+     tablet, whatever), the state stayed stuck at `true` with the one control
+     that could undo it nowhere on screen — the panel kept rendering the
+     desktop fullscreen markup on a phone-sized viewport instead of falling
+     back to the normal responsive layout. A media query listener catches
+     that transition live instead of only reacting to button clicks. */
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+    const syncViewport = (e: MediaQueryList | MediaQueryListEvent) =>
+      setIsMobileViewport(e.matches);
+
+    syncViewport(mql);
+    mql.addEventListener("change", syncViewport);
+    return () => mql.removeEventListener("change", syncViewport);
+  }, []);
+
+  /* Drop out of fullscreen the moment we cross into mobile territory so the
+     widget never gets caught displaying the desktop-only layout. */
+  useEffect(() => {
+    if (isMobileViewport && isFullscreen) {
+      setIsFullscreen(false);
+    }
+  }, [isMobileViewport, isFullscreen]);
+
+  /* The panel sits at z-[70] and covers the entire viewport whenever it's
+     fullscreen on desktop or simply open on a phone (h-[100dvh]). Without
+     locking the body, the page underneath keeps scrolling behind it — most
+     noticeable on mobile Safari, where the address bar and page content
+     both shift while you're mid-conversation. */
+  useEffect(() => {
+    if (!isOpen || (!isFullscreen && !isMobileViewport)) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, isFullscreen, isMobileViewport]);
 
   const close = () => {
     setIsOpen(false);
@@ -327,7 +375,9 @@ export function ChatWidget() {
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => setIsFullscreen((v) => !v)}
+                      onClick={() =>
+                        setIsFullscreen((v) => (isMobileViewport ? false : !v))
+                      }
                       className="hidden h-9 w-9 items-center justify-center rounded-full transition-colors sm:flex"
                       style={{ color: theme.pineOn }}
                       onMouseEnter={(e) => {
