@@ -94,11 +94,11 @@ async def lifespan(app: FastAPI):
                 coalesce=True,
             )
 
-        scheduler.start()
-        logger.info(
+            scheduler.start()
+            logger.info(
             "Startup: Circular scraper scheduled to run every %d minutes.",
             settings.circulars_sync_interval_minutes,
-        )
+            )
     else:
         logger.info(
             "Startup: Circular scraper is disabled. No scheduled tasks will run. "

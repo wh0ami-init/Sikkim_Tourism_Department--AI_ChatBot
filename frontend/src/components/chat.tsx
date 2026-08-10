@@ -120,6 +120,12 @@ function ThinkingIndicator({ isImage = false }: { isImage?: boolean }) {
     );
 }
 
+function sanitizeMarkdown(text: string): string {
+    return text
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/?(?:p|div|span)\b[^>]*>/gi, "");
+}
+
 /* ── Assistant markdown renderer. Sober, readable, brand-coloured links. ── */
 function AssistantMessage({
                               content,
@@ -128,10 +134,11 @@ function AssistantMessage({
     content: string;
     streaming?: boolean;
 }) {
+    const clean = sanitizeMarkdown(content);
     const theme = useChatTheme();
     return (
         <div
-            className={`chat-markdown text-[0.95rem] leading-[1.6] space-y-2.5 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${
+            className={`chat-markdown min-w-0 max-w-full overflow-x-hidden text-[0.95rem] leading-[1.6] space-y-2.5 break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${
                 streaming ? "chat-streaming-cursor" : ""
             }`}
         >
@@ -217,38 +224,35 @@ function AssistantMessage({
                             style={{ background: theme.border }}
                         />
                     ),
-                    table: ({ children }) => (
-                        <div
-                            className="overflow-x-auto my-2 rounded-md border"
-                            style={{ borderColor: theme.border }}
-                        >
-                            <table className="w-full text-sm border-collapse">
-                                {children}
-                            </table>
-                        </div>
-                    ),
-                    th: ({ children }) => (
-                        <th
-                            className="text-left font-semibold py-1.5 px-2 border-b"
-                            style={{
-                                borderColor: theme.border,
-                                background: theme.bgDeep,
-                            }}
-                        >
-                            {children}
-                        </th>
-                    ),
-                    td: ({ children }) => (
-                        <td
-                            className="py-1.5 px-2 border-b"
-                            style={{ borderColor: theme.border }}
-                        >
-                            {children}
-                        </td>
-                    ),
+table: ({ children }) => (
+    <div
+        className="my-2 -mx-1 max-w-full overflow-x-auto rounded-md border overscroll-x-contain"
+        style={{ borderColor: theme.border, WebkitOverflowScrolling: "touch" }}
+    >
+        <table className="w-max min-w-full text-sm border-collapse">
+            {children}
+        </table>
+    </div>
+),
+th: ({ children }) => (
+    <th
+        className="text-left font-semibold py-1.5 px-2 border-b whitespace-nowrap"
+        style={{ borderColor: theme.border, background: theme.bgDeep }}
+    >
+        {children}
+    </th>
+),
+td: ({ children }) => (
+    <td
+        className="py-1.5 px-2 border-b align-top break-words"
+        style={{ borderColor: theme.border, maxWidth: "14rem" }}
+    >
+        {children}
+    </td>
+),
                 }}
             >
-                {content}
+                {clean}
             </ReactMarkdown>
         </div>
     );
@@ -567,7 +571,7 @@ function Bubble({
                 </motion.div>
             )}
 
-            <div className={`min-w-0 ${isUser ? "max-w-[78%]" : "max-w-[88%]"}`}>
+                        <div className={`min-w-0 overflow-hidden ${isUser ? "max-w-[85%] sm:max-w-[78%]" : "max-w-[92%] sm:max-w-[88%]"}`}>
                 {!isUser && showTime && (
                     <div
                         className="mb-1 flex items-center gap-2 text-[0.66rem] font-medium tracking-wide"

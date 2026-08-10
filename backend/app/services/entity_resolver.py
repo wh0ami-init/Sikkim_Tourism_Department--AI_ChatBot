@@ -154,12 +154,12 @@ async def resolve_travel_agency(
     second_score = ranked[1][0] if len(ranked) > 1 else 0.0
 
     # Exact-ish match: safe enough for automatic deterministic answering.
-    if best_score >= 0.94 and (best_score - second_score >= 0.06 or second_score < 0.90):
+    if best_score >= 0.92 and (best_score - second_score >= 0.05 or second_score < 0.88):
         return AgencyResolution(status="matched", query_name=query_name, agency=best, confidence=best_score)
 
-    # Never guess when several records are close.
-    close = [a for score, a in ranked if score >= max(0.72, best_score - 0.08)][:5]
-    if best_score >= 0.72:
+    if best_score >= 0.82 and second_score < 0.70:
         return AgencyResolution(status="ambiguous", query_name=query_name, confidence=best_score, candidates=close)
 
-    return AgencyResolution(status="not_found", query_name=query_name, confidence=best_score, candidates=[a for _, a in ranked[:5]])
+    close = [a for score, a in ranked if score >= max(0.70, best_score - 0.08)][:5]
+    if best_score >= 0.70:
+        return AgencyResolution(status="not_found", query_name=query_name, confidence=best_score, candidates=[a for _, a in ranked[:5]])

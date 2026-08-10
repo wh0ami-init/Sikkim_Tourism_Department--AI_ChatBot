@@ -92,6 +92,8 @@ _AGENCY_LOOKUP_PHRASES = (
     "email for", "email of", "email address of", "email address for",
     "contact for", "contact of", "contact details of", "contact number of",
     "phone number for", "phone number of", "agency email", "agency contact",
+    "details of", "full details", "full data of", "info of", "information of",
+    "tours and travels", "tour and travels",
 )
 
 # Bare words that mean this is very likely about a specific registered
@@ -313,18 +315,112 @@ def _format_verified_agency(agency) -> str:
     return "\n".join(lines)
 
 
+def _format_agency_suggestions(candidates: list, *, query_name: str = "") -> str:
+    """Numbered shortlist so the tourist can pick without guessing for them."""
+    lines = [
+        "I found more than one registered travel agency that could match"
+        + (f' “{query_name}”' if query_name else "")
+        + ". Please reply with the **number** or the **exact name** of the one you mean:"
+    ]
+    for i, agency in enumerate(candidates[:5], start=1):
+        district = f" — {agency.district}" if agency.district else ""
+        lines.append(f"{i}. **{agency.name}**{district}")
+    lines.append(
+        "\nOnce you choose, I will share the official registration number, contact, "
+        "and address from the department directory."
+    )
+    return "\n".join(lines)
+
+
 def _format_agency_resolution_failure(resolution) -> str:
-    if resolution.status == "ambiguous" and resolution.candidates:
-        names = ", ".join(a.name for a in resolution.candidates[:5])
-        return (
-            "I found several travel-agency records that could match that name, so I won't guess. "
-            f"Possible matches: {names}. Please give me the exact agency name or district."
+    if resolution.candidates:
+        return _format_agency_suggestions(
+            resolution.candidates,
+            query_name=resolution.query_name or "",
         )
     return (
-        "I couldn't find a sufficiently reliable match for that travel agency in the official "
-        "department directory, so I won't invent its registration number or contact details. "
-        "Please check the agency name or give me its district."
+        "I could not find a matching travel agency in the official department directory, "
+        "so I will not invent a registration number or contact details. "
+        "Please check the spelling or give me the district it is registered in."
     )
+
+
+_AGENCY_SUGGESTION_MARKER = "Please reply with the **number** or the **exact name**"
+
+
+def _previous_agency_suggestions(history: list[dict]) -> list[str] | None:
+    """
+    If the last assistant turn offered a numbered agency shortlist, return
+    those exact names (in order). Used so a follow-up like "1" or "yes, the
+    first one" can be resolved without the tourist retyping the full name.
+    """
+    for msg in reversed(history or []):
+        if msg.get("role") != "assistant":
+            continue
+        content = msg.get("content") or ""
+        if _AGENCY_SUGGESTION_MARKER not in content:
+            return None
+        names: list[str] = []
+        for match in re.finditer(
+                r"^\s*\d+\.\s+\*\*(.+?)\*\*",
+                content,
+                flags=re.MULTILINE,
+        ):
+            names.append(match.group(1).strip())
+        return names or None
+    return None
+
+
+def _select_from_agency_suggestions(message: str, suggested_names: list[str]) -> str | None:
+    """Map a short tourist reply onto one of the previously offered names."""
+    text = " ".join((message or "").strip().split())
+    if not text or not suggested_names:
+        return None
+
+    lower = text.casefold()
+
+    num = re.fullmatch(r"[#]?\s*([1-5])\s*[.)]?", text.strip())
+    if num:
+        idx = int(num.group(1)) - 1
+        if 0 <= idx < len(suggested_names):
+            return suggested_names[idx]
+
+    ordinals = {
+        "first": 0, "1st": 0, "one": 0,
+        "second": 1, "2nd": 1, "two": 1,
+        "third": 2, "3rd": 2, "three": 2,
+        "fourth": 3, "4th": 3,
+        "fifth": 4, "5th": 4,
+    }
+    for word, idx in ordinals.items():
+        if re.search(rf"\b{word}\b", lower) and idx < len(suggested_names):
+            return suggested_names[idx]
+
+    if lower in {"yes", "yeah", "yep", "ok", "okay", "that one", "this one"} and len(suggested_names) == 1:
+        return suggested_names[0]
+
+    from app.services.entity_resolver import normalize_entity_name, _score
+
+    best_name = None
+    best = 0.0
+    for name in suggested_names:
+        if normalize_entity_name(text) == normalize_entity_name(name):
+            return name
+        s = _score(text, name)
+        if s > best:
+            best = s
+            best_name = name
+    if best >= 0.72:
+        return best_name
+    return None
+
+
+_OFFICIAL_LINKS_CONTEXT = (
+    "OFFICIAL SIKKIM TOURISM DEPARTMENT LINKS (always prefer these exact HTTPS URLs):\n"
+    "- Official website: https://sikkimtourism.gov.in\n"
+    "- Notices and updates: https://sikkimtourism.gov.in/updates/notice\n"
+    "Never invent government URLs. Never use http:// for these hosts."
+)
 
 
 async def _build_agency_context(repo: BaseRepository, message: str, *, limit: int = 5) -> str:
@@ -589,19 +685,57 @@ async def send_message(
             # from MySQL.  Do not send them through the LLM: registration numbers,
             # phone numbers and addresses are database facts, not language-model
             # facts.
-            if not has_image and _needs_agency_lookup(body.message) and not _needs_agency_directory_listing(body.message, history):
-                resolution = await resolve_travel_agency(
-                    repo,
-                    body.message,
-                    district=_extract_district(body.message),
-                )
-                if resolution.status == "matched" and resolution.agency:
-                    deterministic = _format_verified_agency(resolution.agency)
-                else:
-                    deterministic = _format_agency_resolution_failure(resolution)
-                assistant_chunks.append(deterministic)
-                yield f"data: {json.dumps({'text': deterministic})}\n\n"
-                return
+            if not has_image:
+                # Follow-up: tourist is choosing from a numbered shortlist we
+                # offered on the previous turn ("1", "first one", partial name).
+                suggested = _previous_agency_suggestions(history)
+                if suggested:
+                    chosen_name = _select_from_agency_suggestions(body.message, suggested)
+                    if chosen_name:
+                        try:
+                            resolution = await resolve_travel_agency(
+                                repo,
+                                chosen_name,
+                                district=_extract_district(body.message),
+                            )
+                            if resolution.status == "matched" and resolution.agency:
+                                deterministic = _format_verified_agency(resolution.agency)
+                            else:
+                                agency = await repo.get_travel_agency_by_name(chosen_name)
+                                if agency:
+                                    deterministic = _format_verified_agency(agency)
+                                else:
+                                    deterministic = _format_agency_resolution_failure(resolution)
+                            assistant_chunks.append(deterministic)
+                            yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                            return
+                        except Exception as agency_exc:
+                            logger.warning(
+                                "Agency shortlist follow-up failed; falling back: %s",
+                                agency_exc,
+                            )
+
+                if _needs_agency_lookup(body.message) and not _needs_agency_directory_listing(
+                        body.message, history
+                ):
+                    try:
+                        resolution = await resolve_travel_agency(
+                            repo,
+                            body.message,
+                            district=_extract_district(body.message),
+                        )
+                        if resolution.status == "matched" and resolution.agency:
+                            deterministic = _format_verified_agency(resolution.agency)
+                        else:
+                            deterministic = _format_agency_resolution_failure(resolution)
+                        assistant_chunks.append(deterministic)
+                        yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                        return
+                    except Exception as agency_exc:
+                        logger.warning(
+                            "Deterministic agency lookup failed; falling back to RAG: %s",
+                            agency_exc,
+                        )
 
             if has_image:
                 # Vision path — Gemini multimodal
@@ -615,7 +749,7 @@ async def send_message(
                 # Text path — Groq / Llama. Broad catalogue questions get the
                 # full official list; "latest update" questions get the
                 # freshest circulars; focused questions use only RAG results.
-                context_parts = []
+                context_parts = [_OFFICIAL_LINKS_CONTEXT]
                 if _needs_full_destination_context(body.message):
                     dest_context = await _build_official_destinations_context(repo)
                     if dest_context:

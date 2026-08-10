@@ -11,6 +11,7 @@ Two public entry-points:
 from __future__ import annotations
 
 import asyncio
+import re
 import json
 import logging
 from collections.abc import AsyncGenerator
@@ -61,6 +62,18 @@ _SYSTEM_PROMPT = (
     "Keep the answer concise but complete. Use short headings and bullets when they improve "
     "readability. Answer the question first, then add the most relevant caution or next step. "
     "Do not repeat the visitor's question or add a generic closing line to every answer.\n\n"
+
+    "FORMATTING — STRICT:\n"
+    "Write pure Markdown only. Never emit HTML tags of any kind — no <br>, <br/>, <p>, <div>, "
+    "<span>, or similar. Use a blank line between paragraphs and standard Markdown lists "
+    "(- item) or headings (## Heading). The frontend renders Markdown; HTML appears as raw "
+    "text and looks broken on an official government interface.\n\n"
+    "OFFICIAL WEBSITE AND URLS:\n"
+    "The official Tourism and Civil Aviation Department website is "
+    "https://sikkimtourism.gov.in — always use this exact HTTPS URL when the visitor asks for "
+    "the department site, official portal, or government tourism website. Never invent URLs. "
+    "Never downgrade an official link to http://. Prefer HTTPS for every government link you "
+    "cite. Notices and updates live under https://sikkimtourism.gov.in/updates/notice.\n\n"
 
     "SOURCE AND CERTAINTY RULES:\n"
     "Treat application-supplied Department records as the primary source, followed by clearly "
@@ -252,6 +265,21 @@ def _build_chat_history(raw_messages: list[dict]) -> list:
         else:
             msgs.append(AIMessage(content=m["content"]))
     return msgs
+
+_HTML_BREAK_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_HTML_TAG_RE = re.compile(
+    r"</?(?:p|div|span|strong|b|em|i|ul|ol|li|h[1-6]|table|tr|td|th|a)\b[^>]*>",
+    re.IGNORECASE,
+)
+
+
+def sanitize_assistant_text(text: str) -> str:
+    """Normalise model output for a Markdown-only frontend."""
+    if not text:
+        return text
+    cleaned = _HTML_BREAK_RE.sub("\n", text)
+    cleaned = _HTML_TAG_RE.sub("", cleaned)
+    return cleaned
 
 
 # Share the cached client between the primary and fallback models.
@@ -632,7 +660,7 @@ async def stream_rag_response(
             async for chunk in chain.astream(attempt_input):
                 started_streaming = True
                 if chunk:
-                    yield chunk
+                    yield sanitize_assistant_text(chunk)
             return  # finished cleanly — done
         except Exception as exc:
             last_exc = exc
@@ -735,7 +763,7 @@ async def stream_rag_response_with_image(
         async for chunk in vision_llm.astream(messages):
             text = chunk.content
             if text:
-                yield str(text)
+                yield sanitize_assistant_text(str(text))
 
     except Exception as exc:
         logger.exception("Vision chain error: %s", exc)
