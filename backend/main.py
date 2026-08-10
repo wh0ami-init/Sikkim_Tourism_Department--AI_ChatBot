@@ -30,33 +30,44 @@ from app.startup import resync_vectorstore, populate_vectorstore
 from app.models.schemas import AdminCredentials, AdminCredentialsChange, AdminUser, Destination, DestinationWrite
 from app.services.admin_auth import hash_password, validate_password, verify_password
 
+# Logger --> Configuration_&_Startup_Section
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-
 logger = logging.getLogger(__name__)
 
-# ── FastAPI_Lifespan_Function ───────────────────────────────────────────────────
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── FastAPI_LIFESPAN_FUNCTION ───────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
     repo = get_repo()
+
+    # Vector_Store --> Startup_Section
     try:
         indexed = await populate_vectorstore(repo)
         logger.info("Startup: Vectorstore populated with %d documents.", indexed)
     except Exception as exc:
         logger.error("Startup: Failed to populate vectorstore (non-fatal): %s", exc)
-        logger.warning("The chat service will start without a populated vectorstore. This may lead to degraded performance or missing information.")
+        logger.warning(
+            "The chat service will start without a populated vectorstore. "
+            "This may lead to degraded performance or missing information."
+        )
 
+    # Circular_Scraper -->  Startup_Section
     scheduler = None
     if settings.enable_circular_scraper:
         try:
             from apscheduler.schedulers.asyncio import AsyncIOScheduler
             from app.services.circular_scraper import run_circular_sync
         except ModuleNotFoundError as exc:
-            logger.error("Startup: Failed to import circular scraper dependencies (non-fatal): %s", exc.name)
-            logger.warning("The circular scraper will not run. Please ensure all dependencies are installed.")
+            logger.error(
+                "Startup: Failed to import circular scraper dependencies (non-fatal): %s",
+                exc.name,
+            )
+            logger.warning(
+                "The circular scraper will not run. Please ensure all dependencies are installed."
+            )
         else:
             try:
                 summary = await run_circular_sync(repo)
@@ -66,67 +77,85 @@ async def lifespan(app: FastAPI):
                 )
             except Exception as exc:
                 logger.error("Startup: Circular scraper failed to run (non-fatal): %s", exc)
-                logger.warning("The circular scraper will not run. Please check the configuration and dependencies.")
+                logger.warning(
+                    "The circular scraper will not run. Please check the configuration and dependencies."
+                )
 
+            # Scraper_Scheduler --> Initialization_&_Execution
             scheduler = AsyncIOScheduler()
+
             scheduler.add_job(
                 run_circular_sync,
                 "interval",
                 minutes=settings.circulars_sync_interval_minutes,
                 args=[repo],
                 id="circular_sync",
-                # If a run is somehow still in flight when the next tick fires,
-                # skip that tick instead of stacking overlapping scrapes.
                 max_instances=1,
                 coalesce=True,
             )
-            scheduler.start()
-        logger.info("Startup: Circular scraper scheduled to run every %d minutes.", settings.circulars_sync_interval_minutes)
-    else:
-        logger.info("Startup: Circular scraper is disabled. No scheduled tasks will run. Manual Upload of circulars is still possible via the /circulars/upload endpoint.")
 
+        scheduler.start()
+        logger.info(
+            "Startup: Circular scraper scheduled to run every %d minutes.",
+            settings.circulars_sync_interval_minutes,
+        )
+    else:
+        logger.info(
+            "Startup: Circular scraper is disabled. No scheduled tasks will run. "
+            "Manual Upload of circulars is still possible via the /circulars/upload endpoint."
+        )
+    # [Boundary_Section --> Startup : Before || Shutdown : After] ~> `yield`
     yield
 
+    # Shutdown --> Section
     if scheduler is not None:
         scheduler.shutdown(wait=False)
+# ── [[ |> ]] ───────────────────────────────────────────────────
 
-# Browser security headers
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── BROWSER_SECURITY_HEADERS --> Security_Based ───────────────────────────────────────────────────
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Applied Browser Protections consistently to every API response."""
 
     async def dispatch(self, request, call_next):
-        # File fields are spooled before the endpoint handler runs. Reject
-        # declared oversized multipart requests before they consume temp disk.
-        # The deployment proxy must impose the same limit for chunked bodies.
+
+        # First_Security_Check --> Upload_Endpoint
         if request.url.path == "/api/admin/upload-circular":
             content_length = request.headers.get("content-length")
             if content_length:
                 try:
                     if int(content_length) > settings.max_admin_upload_request_bytes:
                         response = JSONResponse(
-                            status_code=413,
-                            content={"detail": "Upload request exceeds the server limit."},
+                            status_code = 413,
+                            content = {"detail": "Upload request exceeds the server limit."},
                         )
                         return self._secure_rejection_response(request, response)
                 except ValueError:
                     response = JSONResponse(
-                        status_code=400,
-                        content={"detail": "Invalid Content-Length header."},
+                        status_code = 400,
+                        content = {"detail": "Invalid Content-Length Header."},
                     )
                     return self._secure_rejection_response(request, response)
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = _content_security_policy(
-            request.url.path
-        )
-        # Camera is not used; microphone is limited to the same origin.
-        response.headers["Permissions-Policy"] = (
-            "geolocation=(), microphone=(self), camera=()"
-        )
 
-        # Conversation IDs act like bearer tokens and must not be cached.
+        # Central_Line_of_Security --> Middleware_Section
+        response = await call_next(request)
+
+        # No_Guesses_of_different_Content-Type
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # Restricted_Page_From_Embedding_of_iframe
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # Restriction_of_Limited_Information
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Appropriate_CSP_Policy_of_Particular_Route --> Returns
+        response.headers["Content-Security-Policy"] = _content_security_policy( request.url.path)
+
+        # Restricted_Accessibility_of_Permissions
+        response.headers["Permissions-Policy"] = ("geolocation=(), microphone=(self), camera=()")
+
+        # Conversation_ID == Bearer_Tokens --> Must not be cached
         if request.url.path.startswith(("/api/conversations", "/api/admin")):
             response.headers.setdefault(
                 "Cache-Control", "no-store, max-age=0, must-revalidate"
@@ -136,32 +165,45 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 and request.url.path.startswith("/api/destinations")
                 and response.status_code == 200
         ):
-            # These records are public and change infrequently.
-            # Browser/CDN Caching
+
+            # Browser/CDN_Caching --> Public_Destination_Caching
             response.headers.setdefault(
                 "Cache-Control", "public, max-age=300, s-maxage=3600"
             )
 
-        # HSTS is only sent for production deployments.
+        # HSTS --> HTTP_Strict_Transport_Security
         if settings.environment == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age = 31536000; includeSubDomains"
+            )
 
         return response
+    # ── [[ |> ]] ───────────────────────────────────────────────────
 
+    # ── [[ || ]] ───────────────────────────────────────────────────
+    # If_Middleware_Object_Rejects_Request_Before_`call_next()` --> Helper_Function
     @staticmethod
     def _secure_rejection_response(request: Request, response: JSONResponse) -> JSONResponse:
         """Keep early request-size rejections covered by the normal headers."""
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = _content_security_policy(request.url.path)
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=()"
+        response.headers["Content-Security-Policy"] = _content_security_policy(
+            request.url.path
+        )
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(self), camera=()"
+        )
         response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
         if settings.environment == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
         return response
+    # ── [[ |> ]] ───────────────────────────────────────────────────
 
-# ── Content_Security_Policy_Header--Helper_Function ───────────────────────────────────────────────────
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── CONTENT_SECURITY_POLICY_HEADER--Helper_Function ───────────────────────────────────────────────────
 def _content_security_policy(path: str) -> str:
     """Return the least-permissive policy needed for the requested endpoint.
 
@@ -192,52 +234,69 @@ def _content_security_policy(path: str) -> str:
         "script-src 'self'; "
         "connect-src 'self' https://api.open-meteo.com"
     )
+# ── [[ |> ]] ───────────────────────────────────────────────────
 
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── FastAPI  -> Application_Setup/Build ───────────────────────────────────────────────────
 app = FastAPI(
-    title="Sikkim Tourism AI Assistant API Endpoints Console Page",
-    description=(
+    title = "Sikkim Tourism AI Assistant API Endpoints Console Page",
+    description = (
         "This API provides endpoints for interacting with the Sikkim Tourism AI Assistant,"
         "AI-powered Tourism Assistant for the Tourism and Civil Aviation Department, Government of Sikkim."
         "Powered by LangChain + Qdrant RAG + Google Gemini."
     ),
-    version="2.0.0",
+    version = "2.0.0",
     # Keep interactive API documentation out of production.
-    docs_url="/api/docs" if settings.environment != "production" else None,
-    redoc_url="/api/redoc" if settings.environment != "production" else None,
-    openapi_url="/api/openapi.json" if settings.environment != "production" else None,
-    lifespan=lifespan,
+    docs_url = "/api/docs" if settings.environment != "production" else None,
+    redoc_url = "/api/redoc" if settings.environment != "production" else None,
+    openapi_url = "/api/openapi.json" if settings.environment != "production" else None,
+    lifespan = lifespan,
 )
+# ── [[ |> ]] ───────────────────────────────────────────────────
 
-# Adds_Security_MiddleWare
-app.add_middleware(SecurityHeadersMiddleware)
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── SECURITY_CONFIGURATION_SECTION ───────────────────────────────────────────────────
 
-# CORS settings
+# CORS_Settings --> Configuration
 origins = settings.origins_list
 methods = settings.methods_list
 headers = settings.headers_list
 allow_credentials = origins != ["*"]
 
-# CORS middleware
+# Adds_Security_MiddleWare
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS_Actual_Middleware --> Security_Section
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=allow_credentials,
-    allow_methods=methods,
-    allow_headers=headers,
+    allow_origins = origins,
+    allow_methods = methods,
+    allow_credentials = allow_credentials,
+    allow_headers = headers,
 )
 
 # Rate_Limiter
 app.state.limiter = limiter
+# ── [[ |> ]] ───────────────────────────────────────────────────
 
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── REGISTRATION_OF_ROUTERS --> Section ───────────────────────────────────────────────────
+app.include_router(destinations.router, prefix = "/api/destinations", tags = ["Destinations"])
+app.include_router(chat.router, prefix = "/api/conversations", tags = ["Chat"])
+# ── [[ |> ]] ───────────────────────────────────────────────────
+
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── EXCEPTION_HANDLER_SECTION ───────────────────────────────────────────────────
+
+# Rate_Limit --> Exception_Handler
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request, exc: RateLimitExceeded):
     return JSONResponse(
-        status_code=429,
-        content={"detail": "Too many requests. Please wait a moment before trying again."},
+        status_code = 429,
+        content = {"detail": "Too many requests. Please wait a moment before trying again."},
     )
 
-app.include_router(destinations.router, prefix="/api/destinations", tags=["Destinations"])
-app.include_router(chat.router, prefix="/api/conversations", tags=["Chat"])
+# Unhandled --> Exception_Handler
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc: Exception):
     """Log detail server-side while returning a stable public error shape."""
@@ -251,14 +310,17 @@ async def unhandled_exception_handler(request, exc: Exception):
         )
 
     return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error. Please try again."},
+        status_code = 500,
+        content = {"detail": "Internal server error. Please try again."},
     )
+# ── [[ |> ]] ───────────────────────────────────────────────────
 
-
+# ── [[ || ]] ───────────────────────────────────────────────────
+# ── HTTP_EXCEPTION_HANDLER_SECTION ───────────────────────────────────────────────────
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 
 @app.get("/api/health", tags=["System"])
 def health():
@@ -270,8 +332,6 @@ def health():
         "db_mode": settings.db_mode,
         "qdrant_mode": settings.qdrant_mode,
         "qdrant_collection": settings.qdrant_collection,
-        # Embeddings still run on Gemini; the chat LLM step runs on Groq — both
-        # keys must be set for the assistant to actually answer questions.
         "embeddings_configured": bool(settings.gemini_api_key),
         "chat_llm_configured": bool(settings.groq_api_key),
     }
@@ -279,7 +339,7 @@ def health():
 
 @app.get("/admin/upload-circular", include_in_schema=False)
 def admin_upload_page():
-    """Keep legacy bookmarks working while consolidating admin access."""
+    """Keep legacy bookmarks working while consolidating Admin_Access."""
     return RedirectResponse(url="/admin", status_code=307)
 
 
@@ -302,26 +362,37 @@ async def setup_first_admin(
 ):
     """Create the first password account, guarded by the server-only bootstrap key."""
     if await repo.admin_user_exists():
-        raise HTTPException(status_code=409, detail="An admin account has already been configured.")
+        raise HTTPException(
+            status_code = 409,
+            detail = "An admin account has already been configured.",
+        )
     password_error = validate_password(credentials.password)
     if password_error:
         raise HTTPException(status_code=422, detail=password_error)
     try:
         password_hash = hash_password(credentials.password)
         await repo.create_admin_user(
-            AdminUser(username=credentials.username.lower(), password_hash=password_hash)
+            AdminUser(
+                username = credentials.username.lower(),
+                password_hash = password_hash,
+            )
         )
     except Exception as exc:
-        # The database unique constraint also closes the race between two setup
-        # requests. Do not expose database details to the browser.
         logger.warning("First-admin setup failed: %s", exc)
-        raise HTTPException(status_code=409, detail="Admin setup is no longer available.") from exc
+        raise HTTPException(
+            status_code=409,
+            detail="Admin setup is no longer available.",
+        ) from exc
     return {"status": "ok"}
 
 
 @admin_auth_router.post("/login")
 @limiter.limit("10/minute")
-async def admin_login(request: Request, credentials: AdminCredentials, repo=Depends(get_repo)):
+async def admin_login(
+        request: Request,
+        credentials: AdminCredentials,
+        repo=Depends(get_repo),
+):
     """Authenticate without revealing whether a username exists."""
     user = await repo.get_admin_user(credentials.username.lower())
     if user is None or not verify_password(credentials.password, user.password_hash):
@@ -349,17 +420,26 @@ async def change_admin_credentials(
         repo=Depends(get_repo),
 ):
     user = await repo.get_admin_user(username)
-    if user is None or not verify_password(credentials_change.current_password, user.password_hash):
+    if user is None or not verify_password(
+            credentials_change.current_password, user.password_hash
+    ):
         raise HTTPException(status_code=401, detail="Current password is incorrect.")
     password_error = validate_password(credentials_change.new_password)
     if password_error:
         raise HTTPException(status_code=422, detail=password_error)
     password_hash = hash_password(credentials_change.new_password)
     try:
-        updated = await repo.update_admin_credentials(username, credentials_change.new_username, password_hash)
+        updated = await repo.update_admin_credentials(
+            username,
+            credentials_change.new_username,
+            password_hash,
+        )
     except Exception as exc:
         logger.warning("Admin credential change failed: %s", exc)
-        raise HTTPException(status_code=409, detail="That username is already in use.") from exc
+        raise HTTPException(
+            status_code=409,
+            detail="That username is already in use.",
+        ) from exc
     if not updated:
         raise HTTPException(status_code=409, detail="That username is already in use.")
     return {"status": "ok"}
@@ -386,7 +466,7 @@ async def sync_circulars(request: Request, repo=Depends(get_repo)):
     if not settings.enable_circular_scraper:
         return {
             "status": "disabled",
-            "detail": "Automatic circular scraping is disabled on this deployment."
+            "detail": "Automatic circular scraping is disabled on this deployment.",
         }
     from app.services.circular_scraper import run_circular_sync
 
@@ -415,7 +495,9 @@ _UPLOAD_CATEGORIES = {"road_status", "cancellation_order", "notice"}
 async def admin_dashboard(request: Request, repo=Depends(get_repo)):
     """Return the small operational summary rendered by the admin console."""
     destinations, circulars, agency_count = await asyncio.gather(
-        repo.list_destinations(), repo.list_circulars(limit=5), repo.count_travel_agencies()
+        repo.list_destinations(),
+        repo.list_circulars(limit=5),
+        repo.count_travel_agencies(),
     )
     return {
         "destination_count": len(destinations),
@@ -435,26 +517,37 @@ async def admin_list_destinations(request: Request, repo=Depends(get_repo)):
 @admin_router.post("/destinations", response_model=Destination, status_code=201)
 @_ADMIN_RATE_LIMIT
 async def admin_create_destination(
-        request: Request, destination: DestinationWrite, repo=Depends(get_repo)
+        request: Request,
+        destination: DestinationWrite,
+        repo=Depends(get_repo),
 ):
     try:
         return await repo.create_destination(destination)
     except Exception as exc:
         if "duplicate" in str(exc).lower():
-            raise HTTPException(status_code=409, detail="A destination with this slug already exists.")
+            raise HTTPException(
+                status_code=409,
+                detail="A destination with this slug already exists.",
+            )
         raise
 
 
 @admin_router.put("/destinations/{destination_id}", response_model=Destination)
 @_ADMIN_RATE_LIMIT
 async def admin_update_destination(
-        destination_id: int, request: Request, destination: DestinationWrite, repo=Depends(get_repo)
+        destination_id: int,
+        request: Request,
+        destination: DestinationWrite,
+        repo=Depends(get_repo),
 ):
     try:
         updated = await repo.update_destination(destination_id, destination)
     except Exception as exc:
         if "duplicate" in str(exc).lower():
-            raise HTTPException(status_code=409, detail="A destination with this slug already exists.")
+            raise HTTPException(
+                status_code=409,
+                detail="A destination with this slug already exists.",
+            )
         raise
     if not updated:
         raise HTTPException(status_code=404, detail="Destination not found.")
@@ -463,7 +556,11 @@ async def admin_update_destination(
 
 @admin_router.delete("/destinations/{destination_id}", status_code=204)
 @_ADMIN_RATE_LIMIT
-async def admin_delete_destination(destination_id: int, request: Request, repo=Depends(get_repo)):
+async def admin_delete_destination(
+        destination_id: int,
+        request: Request,
+        repo=Depends(get_repo),
+):
     if not await repo.delete_destination(destination_id):
         raise HTTPException(status_code=404, detail="Destination not found.")
 
@@ -471,14 +568,20 @@ async def admin_delete_destination(destination_id: int, request: Request, repo=D
 @admin_router.get("/circulars")
 @_ADMIN_RATE_LIMIT
 async def admin_list_circulars(
-        request: Request, limit: int = Query(100, ge=1, le=250), repo=Depends(get_repo)
+        request: Request,
+        limit: int = Query(100, ge=1, le=250),
+        repo=Depends(get_repo),
 ):
     return await repo.list_circulars(limit=limit)
 
 
 @admin_router.delete("/circulars/{circular_id}", status_code=204)
 @_ADMIN_RATE_LIMIT
-async def admin_delete_circular(circular_id: int, request: Request, repo=Depends(get_repo)):
+async def admin_delete_circular(
+        circular_id: int,
+        request: Request,
+        repo=Depends(get_repo),
+):
     if not await repo.delete_circular(circular_id):
         raise HTTPException(status_code=404, detail="Circular not found.")
 
@@ -525,11 +628,17 @@ async def upload_circular(
     if not title:
         raise HTTPException(status_code=400, detail="title is required.")
     if len(title) > 300:
-        raise HTTPException(status_code=422, detail="title must be 300 characters or fewer.")
+        raise HTTPException(
+            status_code=422,
+            detail="title must be 300 characters or fewer.",
+        )
     if district is not None:
         district = district.strip() or None
         if district and len(district) > 100:
-            raise HTTPException(status_code=422, detail="district must be 100 characters or fewer.")
+            raise HTTPException(
+                status_code=422,
+                detail="district must be 100 characters or fewer.",
+            )
 
     # UploadFile spools large multipart bodies to disk, but reading it without
     # a bound would copy an attacker-controlled file into process memory before
@@ -539,7 +648,7 @@ async def upload_circular(
     if len(file_bytes) > max_upload_bytes:
         raise HTTPException(
             status_code=413,
-            detail=f"File exceeds the {max_upload_bytes // (1024*1024)} MB limit.",
+            detail=f"File exceeds the {max_upload_bytes // (1024 * 1024)} MB limit.",
         )
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
@@ -566,8 +675,13 @@ async def upload_circular(
 
     return result
 
+
 app.include_router(admin_router)
 app.include_router(admin_auth_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+# ───────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────

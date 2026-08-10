@@ -20,14 +20,14 @@ class Settings(BaseSettings):
     mysql_database: str = "sikkim_tourism"
     mysql_ssl_ca: str = "certs/ca.pem"
 
-    # Gemini--Conf.
+    # Gemini_AI--Conf.
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
 
-    # Embedding_Model--Conf.
+    # Embedding_Model_AI--Conf.
     gemini_embedding_model: str = "models/gemini-embedding-001"
 
-    # Groq--Conf.
+    # Groq_AI--Conf.
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
     groq_fallback_model: str = "llama-3.1-8b-instant"
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     enable_prompt_guard: bool = False
     prompt_guard_model: str = "meta-llama/llama-prompt-guard-2-86m"
 
-    # Tavily_Web_Search--Conf.
+    # Tavily_AI_Web_Search--Conf.
     tavily_api_key: str = ""
 
     # Follow_Up_Suggestions--Conf.
@@ -59,7 +59,8 @@ class Settings(BaseSettings):
     circulars_max_pdf_bytes: int = 15 * 1024 * 1024
     circulars_max_per_run: int = 20
     enable_circular_scraper: bool = False
-    # Includes multipart boundaries/metadata in addition to the file limit.
+
+    # Restricted_File_Uploads--Conf.
     max_admin_upload_request_bytes: int = 16 * 1024 * 1024
 
     # Administrator_Authentication--Conf.
@@ -134,15 +135,17 @@ class Settings(BaseSettings):
         """Reject unsafe browser-access and official-scraper settings."""
         if self.environment == "production" and self.allowed_origins == "*":
             raise ValueError("ALLOWED_ORIGINS cannot be '*' in production. Please specify explicit origins.")
+        
         if self.environment == "production" and any(not origin.startswith("https://") for origin in self.origins_list):
             raise ValueError("In production, all allowed origins must use 'HTTPS' for security reasons.")
+        
         if self.max_admin_upload_request_bytes < self.circulars_max_pdf_bytes:
             raise ValueError("MAX_ADMIN_UPLOAD_REQUEST_BYTES must be at least CIRCULARS_MAX_PDF_BYTES.")
         if self.mysql_host not in {"localhost", "127.0.0.1", "::1"}:
+            
             if not Path(self.mysql_ssl_ca_path).is_file():
                 raise ValueError("MYSQL_SSL_CA must point to a CA certificate for remote MySQL.")
-        # This is an official-data feed, not a general web crawler. Keep the
-        # network boundary fixed even if a deployment variable is mis-set.
+
         if self.circulars_allowed_host != "sikkimtourism.gov.in":
             raise ValueError("CIRCULARS_ALLOWED_HOST must be sikkimtourism.gov.in.")
         notice_url = urlparse(self.circulars_notice_url)
@@ -160,3 +163,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ───────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────
