@@ -1,103 +1,1079 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Software Requirements Specification for the Sikkim Tourism Assistant.">
   <!-- Self-contained document: no network requests, analytics, or third-party code. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>SRS | Sikkim Tourism Assistant</title>
   <style>
-    :root { --ink:#17231f; --muted:#5d6b65; --paper:#f7f7f2; --card:#fff; --line:#dbe4de; --pine:#176451; --pine-2:#0e3e34; --gold:#c68a27; --soft:#e7f2ec; --danger:#9d3e22; --shadow:0 18px 48px rgba(20,47,38,.09); color-scheme:light; }
-    :root[data-theme="dark"] { --ink:#eaf3ee; --muted:#b6c6be; --paper:#101a17; --card:#17241f; --line:#30453c; --pine:#72c5a4; --pine-2:#b8ead5; --gold:#e5b85e; --soft:#1b332a; --shadow:0 18px 48px rgba(0,0,0,.24); color-scheme:dark; }
-    * { box-sizing:border-box; } html { scroll-behavior:smooth; } body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.65 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    a { color:var(--pine); } a:focus-visible, button:focus-visible, input:focus-visible { outline:3px solid var(--gold); outline-offset:3px; }
-    .progress { position:fixed; top:0; z-index:100; width:0; height:4px; background:linear-gradient(90deg,var(--gold),var(--pine)); transition:width .1s linear; }
-    .shell { width:min(1180px,calc(100% - 40px)); margin:auto; }
-    .hero { min-height:560px; color:#fff; position:relative; overflow:hidden; background:radial-gradient(circle at 80% 15%,rgba(226,172,68,.25),transparent 24%),radial-gradient(circle at 10% 90%,rgba(83,188,145,.22),transparent 30%),linear-gradient(135deg,#103a31,#081d19); }
-    .hero:before { content:""; position:absolute; inset:0; opacity:.22; background-image:linear-gradient(30deg,transparent 48%,#fff 49%,transparent 51%),linear-gradient(150deg,transparent 48%,#fff 49%,transparent 51%); background-size:90px 160px; mask-image:linear-gradient(to bottom,black,transparent); }
-    .topbar { position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:20px 0; gap:16px; }
-    .brand { display:flex; align-items:center; gap:12px; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }.seal { width:39px;height:39px;border:1px solid rgba(255,255,255,.45);border-radius:50%;display:grid;place-items:center;color:#f5cc77;font-family:Georgia,serif;font-size:17px; }
-    .actions { display:flex; gap:9px; }.btn { border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:8px 11px; background:rgba(255,255,255,.08); color:inherit; cursor:pointer; font:inherit; }.btn:hover { background:rgba(255,255,255,.18); }
-    .hero-copy { position:relative; z-index:1; padding:85px 0 100px; max-width:790px; }.eyebrow { color:var(--gold); font-weight:800; text-transform:uppercase; letter-spacing:.16em; font-size:11px; }.hero h1 { font:700 clamp(38px,6vw,72px)/1.03 Georgia,serif; margin:18px 0; letter-spacing:-.04em; }.hero p { max-width:690px; font-size:18px; color:#d9e6df; }.meta { display:flex; gap:10px; flex-wrap:wrap; margin-top:28px; }.chip { border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.1); border-radius:100px; padding:7px 12px; font-size:12px; }
-    .layout { display:grid; grid-template-columns:235px minmax(0,1fr); gap:50px; padding:44px 0 85px; }.toc { position:sticky; top:24px; height:max-content; border-left:1px solid var(--line); padding-left:16px; }.toc b { font-size:12px; letter-spacing:.1em; text-transform:uppercase; }.toc a { display:block; color:var(--muted); text-decoration:none; padding:5px 0; font-size:13px; }.toc a.active,.toc a:hover { color:var(--pine); font-weight:700; }
-    section { scroll-margin-top:24px; margin-bottom:62px; }.section-label { color:var(--pine); font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }.section-title { font:700 32px/1.15 Georgia,serif; letter-spacing:-.025em; margin:8px 0 18px; }.lead { color:var(--muted); font-size:17px; max-width:780px; }
-    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; box-shadow:var(--shadow); }.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-8{grid-column:span 8}.span-12{grid-column:span 12}.card h3{margin:0 0 8px;font-size:16px}.card p{margin:0;color:var(--muted)}
-    .metric { font:700 32px/1 Georgia,serif; color:var(--pine); }.metric-label { color:var(--muted); font-size:12px; margin-top:8px; }.notice { background:var(--soft); border-left:4px solid var(--gold); padding:16px 18px; border-radius:0 10px 10px 0; }.notice strong { color:var(--pine-2); }
-    table { border-collapse:collapse; width:100%; font-size:13px; background:var(--card); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); } th,td { text-align:left; padding:12px 14px; vertical-align:top; border-bottom:1px solid var(--line); } th { background:var(--soft); color:var(--pine-2); font-size:11px; text-transform:uppercase; letter-spacing:.08em; } tr:last-child td { border-bottom:0; }
-    .architecture { margin-top:22px; border:1px solid var(--line); background:var(--card); padding:22px; border-radius:14px; overflow:auto; }.flow { min-width:690px; display:grid; grid-template-columns:1fr 45px 1fr 45px 1fr; align-items:center; text-align:center; }.node { padding:18px 12px; border:1px solid var(--line); border-radius:11px; background:var(--paper); font-weight:700; }.node small { display:block; font-weight:400; color:var(--muted); }.arrow { color:var(--gold); font-size:30px; }
-    .er-wrap { overflow:auto; background:linear-gradient(135deg,var(--card),var(--soft)); border:1px solid var(--line); border-radius:14px; padding:18px; }.er { min-width:820px; min-height:430px; position:relative; }.entity { position:absolute; width:205px; background:var(--card); border:1px solid var(--pine); border-radius:10px; overflow:hidden; box-shadow:var(--shadow); }.entity h3 { margin:0; padding:9px 12px; color:white; font-size:13px; background:var(--pine); }.entity ul { list-style:none; padding:8px 12px; margin:0; font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace; }.pk { color:var(--gold); font-weight:800; }.fk { color:var(--pine); font-weight:800; }.rel { position:absolute; border-top:2px solid var(--gold); transform-origin:left center; }.rel:after { content:""; position:absolute; right:-5px; top:-5px; width:8px; height:8px; background:var(--gold); border-radius:50%; }.rel-label { position:absolute; font-size:11px; color:var(--muted); background:var(--soft); padding:1px 5px; border-radius:4px; }
-    .entity.dest{left:16px;top:30px}.entity.circular{left:16px;top:270px}.entity.conv{left:330px;top:75px}.entity.msg{left:630px;top:75px}.entity.admin{left:330px;top:285px}.entity.agency{left:630px;top:285px}.r1{left:535px;top:165px;width:95px;transform:rotate(0deg)}.l1{left:550px;top:143px}.r2{left:433px;top:250px;width:1px;transform:rotate(90deg)}.l2{left:445px;top:244px}
-    pre { overflow:auto; padding:17px; background:#0d1d18; color:#dcece4; border-radius:12px; font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace; box-shadow:var(--shadow); } code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }.copy { float:right; color:var(--pine); border:1px solid var(--line); border-radius:7px; padding:5px 9px; cursor:pointer; background:var(--card); font:12px inherit; }
-    details { border:1px solid var(--line); background:var(--card); border-radius:10px; padding:0 16px; margin:10px 0; } summary { padding:13px 0; cursor:pointer; font-weight:700; } details p,details ul { color:var(--muted); }
-    .check { list-style:none; padding:0; margin:0; }.check li { padding:8px 0 8px 27px; position:relative; border-bottom:1px solid var(--line); }.check li:before { content:"✓"; position:absolute; left:0; color:var(--pine); font-weight:800; }.check li:last-child { border-bottom:0; }
-    .footer { background:var(--pine-2); color:#eff9f3; padding:45px 0; }.footer p { color:#c7ddd3; max-width:760px; }.signature { border-top:1px solid rgba(255,255,255,.3); margin-top:26px; padding-top:16px; font-size:14px; }
-    .reveal { opacity:0; transform:translateY(18px); transition:opacity .6s ease,transform .6s ease; }.reveal.visible { opacity:1; transform:none; }
-    @media (max-width:820px){.layout{display:block}.toc{display:none}.hero-copy{padding:55px 0 78px}.span-4,.span-6,.span-8{grid-column:span 12}.shell{width:min(100% - 28px,1180px)}.section-title{font-size:29px}} @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}} @media print{.progress,.actions,.toc{display:none}.hero{min-height:auto}.hero-copy{padding:40px 0}.layout{display:block;padding-top:30px}.card,table,pre{box-shadow:none}section{break-inside:avoid}.footer{background:#173f34!important;color:#fff!important}}
+    :root {
+      --ink: #17231f;
+      --muted: #5d6b65;
+      --paper: #f7f7f2;
+      --card: #fff;
+      --line: #dbe4de;
+      --pine: #176451;
+      --pine-2: #0e3e34;
+      --gold: #c68a27;
+      --soft: #e7f2ec;
+      --danger: #9d3e22;
+      --shadow: 0 18px 48px rgba(20, 47, 38, .09);
+      color-scheme: light;
+    }
+
+    :root[data-theme="dark"] {
+      --ink: #eaf3ee;
+      --muted: #0e1411;
+      --paper: #101a17;
+      --card: #17241f;
+      --line: #30453c;
+      --pine: #72c5a4;
+      --pine-2: #b8ead5;
+      --gold: #e5b85e;
+      --soft: #1b332a;
+      --shadow: 0 18px 48px rgba(0, 0, 0, .24);
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 15px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    a {
+      color: var(--pine);
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: 3px;
+    }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      z-index: 100;
+      width: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--gold), var(--pine));
+      transition: width .1s linear;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 40px));
+      margin: auto;
+    }
+
+    .hero {
+      min-height: 560px;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 80% 15%, rgba(226, 172, 68, .25), transparent 24%), radial-gradient(circle at 10% 90%, rgba(83, 188, 145, .22), transparent 30%), linear-gradient(135deg, #103a31, #081d19);
+    }
+
+    .hero:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: .22;
+      background-image: linear-gradient(30deg, transparent 48%, #fff 49%, transparent 51%), linear-gradient(150deg, transparent 48%, #fff 49%, transparent 51%);
+      background-size: 90px 160px;
+      mask-image: linear-gradient(to bottom, black, transparent);
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .seal {
+      width: 39px;
+      height: 39px;
+      border: 1px solid rgba(255, 255, 255, .45);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #f5cc77;
+      font-family: Georgia, serif;
+      font-size: 17px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 9px;
+    }
+
+    .btn {
+      border: 1px solid rgba(255, 255, 255, .4);
+      border-radius: 8px;
+      padding: 8px 11px;
+      background: rgba(255, 255, 255, .08);
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, .18);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      padding: 85px 0 100px;
+      max-width: 790px;
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 11px;
+    }
+
+    .hero h1 {
+      font: 700 clamp(38px, 6vw, 72px)/1.03 Georgia, serif;
+      margin: 18px 0;
+      letter-spacing: -.04em;
+    }
+
+    .hero p {
+      max-width: 690px;
+      font-size: 18px;
+      color: #d9e6df;
+    }
+
+    .meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 28px;
+    }
+
+    .chip {
+      border: 1px solid rgba(255, 255, 255, .2);
+      background: rgba(255, 255, 255, .1);
+      border-radius: 100px;
+      padding: 7px 12px;
+      font-size: 12px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 235px minmax(0, 1fr);
+      gap: 50px;
+      padding: 44px 0 85px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 24px;
+      height: max-content;
+      border-left: 1px solid var(--line);
+      padding-left: 16px;
+    }
+
+    .toc b {
+      font-size: 12px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+
+    .toc a.active,
+    .toc a:hover {
+      color: var(--pine);
+      font-weight: 700;
+    }
+
+    section {
+      scroll-margin-top: 24px;
+      margin-bottom: 62px;
+    }
+
+    .section-label {
+      color: var(--pine);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      font: 700 32px/1.15 Georgia, serif;
+      letter-spacing: -.025em;
+      margin: 8px 0 18px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 17px;
+      max-width: 780px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .span-4 {
+      grid-column: span 4
+    }
+
+    .span-6 {
+      grid-column: span 6
+    }
+
+    .span-8 {
+      grid-column: span 8
+    }
+
+    .span-12 {
+      grid-column: span 12
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted)
+    }
+
+    .metric {
+      font: 700 32px/1 Georgia, serif;
+      color: var(--pine);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .notice {
+      background: var(--soft);
+      border-left: 4px solid var(--gold);
+      padding: 16px 18px;
+      border-radius: 0 10px 10px 0;
+    }
+
+    .notice strong {
+      color: var(--pine-2);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 12px 14px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: var(--soft);
+      color: var(--pine-2);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .architecture {
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      padding: 22px;
+      border-radius: 14px;
+      overflow: auto;
+    }
+
+    .flow {
+      min-width: 690px;
+      display: grid;
+      grid-template-columns: 1fr 45px 1fr 45px 1fr;
+      align-items: center;
+      text-align: center;
+    }
+
+    .node {
+      padding: 18px 12px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--paper);
+      font-weight: 700;
+    }
+
+    .node small {
+      display: block;
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    .arrow {
+      color: var(--gold);
+      font-size: 30px;
+    }
+
+    .er-wrap {
+      overflow: auto;
+      background: linear-gradient(135deg, var(--card), var(--soft));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .er {
+      min-width: 820px;
+      min-height: 430px;
+      position: relative;
+    }
+
+    .entity {
+      position: absolute;
+      width: 205px;
+      background: var(--card);
+      border: 1px solid var(--pine);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .entity h3 {
+      margin: 0;
+      padding: 9px 12px;
+      color: white;
+      font-size: 13px;
+      background: var(--pine);
+    }
+
+    .entity ul {
+      list-style: none;
+      padding: 8px 12px;
+      margin: 0;
+      font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .pk {
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .fk {
+      color: var(--pine);
+      font-weight: 800;
+    }
+
+    .rel {
+      position: absolute;
+      border-top: 2px solid var(--gold);
+      transform-origin: left center;
+    }
+
+    .rel:after {
+      content: "";
+      position: absolute;
+      right: -5px;
+      top: -5px;
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+    }
+
+    .rel-label {
+      position: absolute;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--soft);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .entity.dest {
+      left: 16px;
+      top: 30px
+    }
+
+    .entity.circular {
+      left: 16px;
+      top: 270px
+    }
+
+    .entity.conv {
+      left: 330px;
+      top: 75px
+    }
+
+    .entity.msg {
+      left: 630px;
+      top: 75px
+    }
+
+    .entity.admin {
+      left: 330px;
+      top: 285px
+    }
+
+    .entity.agency {
+      left: 630px;
+      top: 285px
+    }
+
+    .r1 {
+      left: 535px;
+      top: 165px;
+      width: 95px;
+      transform: rotate(0deg)
+    }
+
+    .l1 {
+      left: 550px;
+      top: 143px
+    }
+
+    .r2 {
+      left: 433px;
+      top: 250px;
+      width: 1px;
+      transform: rotate(90deg)
+    }
+
+    .l2 {
+      left: 445px;
+      top: 244px
+    }
+
+    pre {
+      overflow: auto;
+      padding: 17px;
+      background: #0d1d18;
+      color: #dcece4;
+      border-radius: 12px;
+      font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+      box-shadow: var(--shadow);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .copy {
+      float: right;
+      color: var(--pine);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 5px 9px;
+      cursor: pointer;
+      background: var(--card);
+      font: 12px inherit;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 10px;
+      padding: 0 16px;
+      margin: 10px 0;
+    }
+
+    summary {
+      padding: 13px 0;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    details p,
+    details ul {
+      color: var(--muted);
+    }
+
+    .check {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .check li {
+      padding: 8px 0 8px 27px;
+      position: relative;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .check li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--pine);
+      font-weight: 800;
+    }
+
+    .check li:last-child {
+      border-bottom: 0;
+    }
+
+    .footer {
+      background: var(--pine-2);
+      color: #eff9f3;
+      padding: 45px 0;
+    }
+
+    .footer p {
+      color: #c7ddd3;
+      max-width: 760px;
+    }
+
+    .signature {
+      border-top: 1px solid rgba(255, 255, 255, .3);
+      margin-top: 26px;
+      padding-top: 16px;
+      font-size: 14px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    @media (max-width:820px) {
+      .layout {
+        display: block
+      }
+
+      .toc {
+        display: none
+      }
+
+      .hero-copy {
+        padding: 55px 0 78px
+      }
+
+      .span-4,
+      .span-6,
+      .span-8 {
+        grid-column: span 12
+      }
+
+      .shell {
+        width: min(100% - 28px, 1180px)
+      }
+
+      .section-title {
+        font-size: 29px
+      }
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      html {
+        scroll-behavior: auto
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none
+      }
+    }
+
+    @media print {
+
+      .progress,
+      .actions,
+      .toc {
+        display: none
+      }
+
+      .hero {
+        min-height: auto
+      }
+
+      .hero-copy {
+        padding: 40px 0
+      }
+
+      .layout {
+        display: block;
+        padding-top: 30px
+      }
+
+      .card,
+      table,
+      pre {
+        box-shadow: none
+      }
+
+      section {
+        break-inside: avoid
+      }
+
+      .footer {
+        background: #173f34 !important;
+        color: #fff !important
+      }
+    }
   </style>
 </head>
+
 <body>
-<div class="progress" id="progress" aria-hidden="true"></div>
-<header class="hero">
-  <div class="shell topbar"><div class="brand"><span class="seal" aria-hidden="true">S</span><span>Government of Sikkim<br>Tourism &amp; Civil Aviation Department</span></div><div class="actions"><button class="btn" id="theme" type="button" aria-label="Toggle colour theme">Theme</button><button class="btn" id="print" type="button">Print / Save PDF</button></div></div>
-  <div class="shell hero-copy"><div class="eyebrow">Internship Project · Software Requirements Specification</div><h1>Sikkim Tourism<br>Assistant</h1><p>An AI-powered visitor information system designed to turn official Sikkim tourism records into safe, practical, and accessible travel guidance.</p><div class="meta"><span class="chip">Version 1.0</span><span class="chip">9 August 2026</span><span class="chip">Submission Draft</span><span class="chip">Team Nexus</span></div></div>
-</header>
-<main class="shell layout">
-  <nav class="toc" aria-label="Document navigation"><b>Contents</b><a href="#overview">Overview</a><a href="#requirements">Requirements</a><a href="#architecture">Architecture</a><a href="#database">Database &amp; ER Diagram</a><a href="#security">Security</a><a href="#quality">Quality Assurance</a><a href="#deployment">Deployment</a><a href="#acceptance">Acceptance</a><a href="#declaration">Declaration</a></nav>
-  <article>
-    <section id="overview" class="reveal"><div class="section-label">01 · Project Overview</div><h2 class="section-title">A trusted digital guide for Sikkim visitors.</h2><p class="lead">The Sikkim Tourism Assistant is a web application for destinations, permits, routes, travel advisories, registered travel agencies, and practical itinerary assistance. It is designed to prioritise Department-managed records over generic AI answers.</p><div class="grid" style="margin-top:22px"><div class="card span-4"><div class="metric">24/7</div><div class="metric-label">Public information access</div></div><div class="card span-4"><div class="metric">RAG</div><div class="metric-label">Grounded AI response design</div></div><div class="card span-4"><div class="metric">MySQL</div><div class="metric-label">Production data persistence</div></div></div><div class="notice" style="margin-top:18px"><strong>Purpose.</strong> Provide visitors with reliable, friendly and action-oriented travel assistance while retaining Department control over official content and administrative operations.</div></section>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+  <header class="hero">
+    <div class="shell topbar">
+      <div class="brand"><span class="seal" aria-hidden="true">S</span><span>Government of Sikkim<br>Tourism &amp; Civil
+          Aviation Department</span></div>
+      <div class="actions"><button class="btn" id="theme" type="button"
+          aria-label="Toggle colour theme">Theme</button><button class="btn" id="print" type="button">Print / Save
+          PDF</button></div>
+    </div>
+    <div class="shell hero-copy">
+      <div class="eyebrow">Internship Project · Software Requirements Specification</div>
+      <h1>Sikkim Tourism<br>Assistant</h1>
+      <p>An AI-powered visitor information system designed to turn official Sikkim tourism records into safe, practical,
+        and accessible travel guidance.</p>
+      <div class="meta"><span class="chip">Version 1.0</span><span class="chip">9 August 2026</span><span
+          class="chip">Submission Draft</span><span class="chip">Team Nexus</span></div>
+    </div>
+  </header>
+  <main class="shell layout">
+    <nav class="toc" aria-label="Document navigation"><b>Contents</b><a href="#overview">Overview</a><a
+        href="#requirements">Requirements</a><a href="#architecture">Architecture</a><a href="#database">Database &amp;
+        ER Diagram</a><a href="#security">Security</a><a href="#quality">Quality Assurance</a><a
+        href="#deployment">Deployment</a><a href="#acceptance">Acceptance</a><a href="#declaration">Declaration</a>
+    </nav>
+    <article>
+      <section id="overview" class="reveal">
+        <div class="section-label">01 · Project Overview</div>
+        <h2 class="section-title">A trusted digital guide for Sikkim visitors.</h2>
+        <p class="lead">The Sikkim Tourism Assistant is a web application for destinations, permits, routes, travel
+          advisories, registered travel agencies, and practical itinerary assistance. It is designed to prioritise
+          Department-managed records over generic AI answers.</p>
+        <div class="grid" style="margin-top:22px">
+          <div class="card span-4">
+            <div class="metric">24/7</div>
+            <div class="metric-label">Public information access</div>
+          </div>
+          <div class="card span-4">
+            <div class="metric">RAG</div>
+            <div class="metric-label">Grounded AI response design</div>
+          </div>
+          <div class="card span-4">
+            <div class="metric">MySQL</div>
+            <div class="metric-label">Production data persistence</div>
+          </div>
+        </div>
+        <div class="notice" style="margin-top:18px"><strong>Purpose.</strong> Provide visitors with reliable, friendly
+          and action-oriented travel assistance while retaining Department control over official content and
+          administrative operations.</div>
+      </section>
 
-    <section id="requirements" class="reveal"><div class="section-label">02 · Requirements</div><h2 class="section-title">Functional and non-functional requirements.</h2><table><thead><tr><th>Reference</th><th>Requirement</th><th>Priority</th></tr></thead><tbody>
-      <tr><td>FR-01–06</td><td>Public destination catalogue with search, category filters, destination details, local imagery, permits, route guidance, and optional weather.</td><td>Must</td></tr>
-      <tr><td>FR-07–14</td><td>Streaming tourism chat grounded in official records; language-aware responses; practical day-wise itinerary guidance; safe handling of off-topic requests.</td><td>Must</td></tr>
-      <tr><td>FR-15–17</td><td>Optional JPEG/PNG/WebP image query with strict size, base64, MIME, and byte-signature validation; raw visitor images are not persisted.</td><td>Should</td></tr>
-      <tr><td>FR-18–22</td><td>Public advisory panel showing minimal official notice information and issue dates; only approved official HTTPS source links are rendered.</td><td>Must</td></tr>
-      <tr><td>FR-23–25</td><td>Registered agency answers come from the approved directory; ambiguous matches request clarification rather than guessing.</td><td>Must</td></tr>
-      <tr><td>FR-30–37</td><td>Protected administrator setup, destination/circular management, approved synchronisation, re-indexing, and credential rotation.</td><td>Must</td></tr>
-      <tr><td>NFR-01–10</td><td>HTTPS, explicit production CORS, rate limits, password hashing, CSP/security headers, restricted scraper host, and safe public errors.</td><td>Must</td></tr>
-      <tr><td>NFR-11–22</td><td>Responsive UI, short caching for public catalogue data, non-cacheable conversation/admin data, resilience to optional-service failure, and accessible controls.</td><td>Should</td></tr>
-    </tbody></table></section>
+      <section id="requirements" class="reveal">
+        <div class="section-label">02 · Requirements</div>
+        <h2 class="section-title">Functional and non-functional requirements.</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Requirement</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FR-01–06</td>
+              <td>Public destination catalogue with search, category filters, destination details, local imagery,
+                permits, route guidance, and optional weather.</td>
+              <td>Must</td>
+            </tr>
+            <tr>
+              <td>FR-07–14</td>
+              <td>Streaming tourism chat grounded in official records; language-aware responses; practical day-wise
+                itinerary guidance; safe handling of off-topic requests.</td>
+              <td>Must</td>
+            </tr>
+            <tr>
+              <td>FR-15–17</td>
+              <td>Optional JPEG/PNG/WebP image query with strict size, base64, MIME, and byte-signature validation; raw
+                visitor images are not persisted.</td>
+              <td>Should</td>
+            </tr>
+            <tr>
+              <td>FR-18–22</td>
+              <td>Public advisory panel showing minimal official notice information and issue dates; only approved
+                official HTTPS source links are rendered.</td>
+              <td>Must</td>
+            </tr>
+            <tr>
+              <td>FR-23–25</td>
+              <td>Registered agency answers come from the approved directory; ambiguous matches request clarification
+                rather than guessing.</td>
+              <td>Must</td>
+            </tr>
+            <tr>
+              <td>FR-30–37</td>
+              <td>Protected administrator setup, destination/circular management, approved synchronisation, re-indexing,
+                and credential rotation.</td>
+              <td>Must</td>
+            </tr>
+            <tr>
+              <td>NFR-01–10</td>
+              <td>HTTPS, explicit production CORS, rate limits, password hashing, CSP/security headers, restricted
+                scraper host, and safe public errors.</td>
+              <td>Must</td>
+            </tr>
+            <tr>
+              <td>NFR-11–22</td>
+              <td>Responsive UI, short caching for public catalogue data, non-cacheable conversation/admin data,
+                resilience to optional-service failure, and accessible controls.</td>
+              <td>Should</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
-    <section id="architecture" class="reveal"><div class="section-label">03 · Technical Architecture</div><h2 class="section-title">Separation of public experience, protected operations, and data services.</h2><div class="architecture"><div class="flow"><div class="node">Visitor browser<small>Responsive React interface</small></div><div class="arrow">→</div><div class="node">FastAPI application<small>REST API, SSE, validation, auth</small></div><div class="arrow">→</div><div class="node">MySQL + Qdrant + AI services<small>Records, retrieval, generation</small></div></div></div><div class="grid" style="margin-top:16px"><div class="card span-6"><h3>Public capability</h3><p>Destination exploration, advisory visibility, anonymous chat, itinerary assistance, and verified agency lookups.</p></div><div class="card span-6"><h3>Administrative capability</h3><p>Authenticated catalog maintenance, circular ingestion, source synchronisation, credential rotation, and vector re-indexing.</p></div></div></section>
+      <section id="architecture" class="reveal">
+        <div class="section-label">03 · Technical Architecture</div>
+        <h2 class="section-title">Separation of public experience, protected operations, and data services.</h2>
+        <div class="architecture">
+          <div class="flow">
+            <div class="node">Visitor browser<small>Responsive React interface</small></div>
+            <div class="arrow">→</div>
+            <div class="node">FastAPI application<small>REST API, SSE, validation, auth</small></div>
+            <div class="arrow">→</div>
+            <div class="node">MySQL + Qdrant + AI services<small>Records, retrieval, generation</small></div>
+          </div>
+        </div>
+        <div class="grid" style="margin-top:16px">
+          <div class="card span-6">
+            <h3>Public capability</h3>
+            <p>Destination exploration, advisory visibility, anonymous chat, itinerary assistance, and verified agency
+              lookups.</p>
+          </div>
+          <div class="card span-6">
+            <h3>Administrative capability</h3>
+            <p>Authenticated catalog maintenance, circular ingestion, source synchronisation, credential rotation, and
+              vector re-indexing.</p>
+          </div>
+        </div>
+      </section>
 
-    <section id="database" class="reveal"><div class="section-label">04 · Database Design</div><h2 class="section-title">MySQL schema and entity relationship model.</h2><p class="lead">The production application uses MySQL as the authoritative operational database. Qdrant stores retrieval vectors and does not replace the structured source-of-truth tables.</p><div class="er-wrap" aria-label="Entity relationship diagram"><div class="er">
-      <div class="entity dest"><h3>destinations</h3><ul><li><span class="pk">PK</span> id</li><li>name, slug, category</li><li>district, description</li><li>permit_required, permit_info</li><li>latitude, longitude</li></ul></div>
-      <div class="entity circular"><h3>circulars</h3><ul><li><span class="pk">PK</span> id</li><li>title, category, district</li><li>issue_date, source_url</li><li>pdf_hash <span class="pk">UNIQUE</span></li><li>extracted_text, ingested_at</li></ul></div>
-      <div class="entity conv"><h3>conversations</h3><ul><li><span class="pk">PK</span> id (UUID)</li><li>created_at</li></ul></div>
-      <div class="entity msg"><h3>messages</h3><ul><li><span class="pk">PK</span> id (UUID)</li><li><span class="fk">FK</span> conversation_id</li><li>role, content</li><li>client_message_id</li><li>created_at</li></ul></div>
-      <div class="entity admin"><h3>admin_users</h3><ul><li><span class="pk">PK</span> id</li><li>username <span class="pk">UNIQUE</span></li><li>password_hash</li><li>created_at, updated_at</li></ul></div>
-      <div class="entity agency"><h3>travel_agencies</h3><ul><li><span class="pk">PK</span> id</li><li>name, district</li><li>registration_number <span class="pk">UNIQUE</span></li><li>contact, address</li><li>synced_at</li></ul></div>
-      <span class="rel r1"></span><span class="rel-label l1">1 ─── ∞</span><span class="rel r2"></span><span class="rel-label l2">managed independently</span>
-    </div></div>
-    <table style="margin-top:18px"><thead><tr><th>Table</th><th>Purpose</th><th>Integrity / Indexing</th></tr></thead><tbody><tr><td><code>destinations</code></td><td>Department-managed visitor catalogue.</td><td>Unique slug; full-text name/description search; category constraints.</td></tr><tr><td><code>conversations</code> → <code>messages</code></td><td>Anonymous visitor chat history.</td><td>UUID identifiers; foreign key with cascade; idempotency unique key on conversation/message ID.</td></tr><tr><td><code>circulars</code></td><td>Official notices, road reports and cancellation orders.</td><td>SHA-256 uniqueness prevents duplicate ingestion; category/date index supports freshness queries.</td></tr><tr><td><code>travel_agencies</code></td><td>Approved directory records.</td><td>Unique registration number; district and full-text indexes.</td></tr><tr><td><code>admin_users</code></td><td>Protected Department accounts.</td><td>Unique username; salted password hashes only—never plaintext passwords.</td></tr></tbody></table>
-    <div style="margin-top:18px"><button class="copy" type="button" data-copy="schema">Copy schema command</button><h3>Controlled schema installation</h3><pre id="schema"># Run only against the authorised MySQL environment.
+      <section id="database" class="reveal">
+        <div class="section-label">04 · Database Design</div>
+        <h2 class="section-title">MySQL schema and entity relationship model.</h2>
+        <p class="lead">The production application uses MySQL as the authoritative operational database. Qdrant stores
+          retrieval vectors and does not replace the structured source-of-truth tables.</p>
+        <div class="er-wrap" aria-label="Entity relationship diagram">
+          <div class="er">
+            <div class="entity dest">
+              <h3>destinations</h3>
+              <ul>
+                <li><span class="pk">PK</span> id</li>
+                <li>name, slug, category</li>
+                <li>district, description</li>
+                <li>permit_required, permit_info</li>
+                <li>latitude, longitude</li>
+              </ul>
+            </div>
+            <div class="entity circular">
+              <h3>circulars</h3>
+              <ul>
+                <li><span class="pk">PK</span> id</li>
+                <li>title, category, district</li>
+                <li>issue_date, source_url</li>
+                <li>pdf_hash <span class="pk">UNIQUE</span></li>
+                <li>extracted_text, ingested_at</li>
+              </ul>
+            </div>
+            <div class="entity conv">
+              <h3>conversations</h3>
+              <ul>
+                <li><span class="pk">PK</span> id (UUID)</li>
+                <li>created_at</li>
+              </ul>
+            </div>
+            <div class="entity msg">
+              <h3>messages</h3>
+              <ul>
+                <li><span class="pk">PK</span> id (UUID)</li>
+                <li><span class="fk">FK</span> conversation_id</li>
+                <li>role, content</li>
+                <li>client_message_id</li>
+                <li>created_at</li>
+              </ul>
+            </div>
+            <div class="entity admin">
+              <h3>admin_users</h3>
+              <ul>
+                <li><span class="pk">PK</span> id</li>
+                <li>username <span class="pk">UNIQUE</span></li>
+                <li>password_hash</li>
+                <li>created_at, updated_at</li>
+              </ul>
+            </div>
+            <div class="entity agency">
+              <h3>travel_agencies</h3>
+              <ul>
+                <li><span class="pk">PK</span> id</li>
+                <li>name, district</li>
+                <li>registration_number <span class="pk">UNIQUE</span></li>
+                <li>contact, address</li>
+                <li>synced_at</li>
+              </ul>
+            </div>
+            <span class="rel r1"></span><span class="rel-label l1">1 ─── ∞</span><span class="rel r2"></span><span
+              class="rel-label l2">managed independently</span>
+          </div>
+        </div>
+        <table style="margin-top:18px">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Purpose</th>
+              <th>Integrity / Indexing</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>destinations</code></td>
+              <td>Department-managed visitor catalogue.</td>
+              <td>Unique slug; full-text name/description search; category constraints.</td>
+            </tr>
+            <tr>
+              <td><code>conversations</code> → <code>messages</code></td>
+              <td>Anonymous visitor chat history.</td>
+              <td>UUID identifiers; foreign key with cascade; idempotency unique key on conversation/message ID.</td>
+            </tr>
+            <tr>
+              <td><code>circulars</code></td>
+              <td>Official notices, road reports and cancellation orders.</td>
+              <td>SHA-256 uniqueness prevents duplicate ingestion; category/date index supports freshness queries.</td>
+            </tr>
+            <tr>
+              <td><code>travel_agencies</code></td>
+              <td>Approved directory records.</td>
+              <td>Unique registration number; district and full-text indexes.</td>
+            </tr>
+            <tr>
+              <td><code>admin_users</code></td>
+              <td>Protected Department accounts.</td>
+              <td>Unique username; salted password hashes only—never plaintext passwords.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:18px"><button class="copy" type="button" data-copy="schema">Copy schema command</button>
+          <h3>Controlled schema installation</h3>
+          <pre
+            id="schema"># Run only against the authorised MySQL environment.
 # Review backups and credentials before execution.
 mysql --host=&lt;host&gt; --user=&lt;user&gt; --password sikkim_tourism &lt; docs/schema.sql
 
 # Apply relevant incremental migrations once, in numeric order.
-mysql --host=&lt;host&gt; --user=&lt;user&gt; --password sikkim_tourism &lt; docs/migrations/004_add_admin_users.sql</pre></div></section>
+mysql --host=&lt;host&gt; --user=&lt;user&gt; --password sikkim_tourism &lt; docs/migrations/004_add_admin_users.sql</pre>
+        </div>
+      </section>
 
-    <section id="security" class="reveal"><div class="section-label">05 · Security by Design</div><h2 class="section-title">Protection is built into the application boundary.</h2><div class="grid"><div class="card span-6"><h3>Authentication &amp; access</h3><ul class="check"><li>Bootstrap setup requires a server-side secret.</li><li>Admin actions require valid credentials and rate limiting.</li><li>Passwords use salted scrypt hashes.</li><li>Credentials are never placed in browser local storage.</li></ul></div><div class="card span-6"><h3>Input &amp; upload safety</h3><ul class="check"><li>Request values have constrained types, lengths and formats.</li><li>Images and circular uploads are size-limited and signature-validated.</li><li>Client-provided MIME types are not trusted by themselves.</li><li>Destination image URLs are limited to local approved paths.</li></ul></div><div class="card span-6"><h3>Browser &amp; API controls</h3><ul class="check"><li>Explicit HTTPS CORS origins in production; wildcard is rejected.</li><li>CSP, anti-framing, no-sniff, referrer and permissions headers are applied.</li><li>Conversation and admin responses are non-cacheable.</li><li>Public advisory projection omits internal OCR and ingestion metadata.</li></ul></div><div class="card span-6"><h3>AI safety &amp; integrity</h3><ul class="check"><li>Retrieved text is treated as reference material, never as executable instruction.</li><li>Road status and agency data are answered from verified records.</li><li>Issue dates communicate the freshness of official advisories.</li><li>Unknown official facts are reported honestly rather than guessed.</li></ul></div></div></section>
+      <section id="security" class="reveal">
+        <div class="section-label">05 · Security by Design</div>
+        <h2 class="section-title">Protection is built into the application boundary.</h2>
+        <div class="grid">
+          <div class="card span-6">
+            <h3>Authentication &amp; access</h3>
+            <ul class="check">
+              <li>Bootstrap setup requires a server-side secret.</li>
+              <li>Admin actions require valid credentials and rate limiting.</li>
+              <li>Passwords use salted scrypt hashes.</li>
+              <li>Credentials are never placed in browser local storage.</li>
+            </ul>
+          </div>
+          <div class="card span-6">
+            <h3>Input &amp; upload safety</h3>
+            <ul class="check">
+              <li>Request values have constrained types, lengths and formats.</li>
+              <li>Images and circular uploads are size-limited and signature-validated.</li>
+              <li>Client-provided MIME types are not trusted by themselves.</li>
+              <li>Destination image URLs are limited to local approved paths.</li>
+            </ul>
+          </div>
+          <div class="card span-6">
+            <h3>Browser &amp; API controls</h3>
+            <ul class="check">
+              <li>Explicit HTTPS CORS origins in production; wildcard is rejected.</li>
+              <li>CSP, anti-framing, no-sniff, referrer and permissions headers are applied.</li>
+              <li>Conversation and admin responses are non-cacheable.</li>
+              <li>Public advisory projection omits internal OCR and ingestion metadata.</li>
+            </ul>
+          </div>
+          <div class="card span-6">
+            <h3>AI safety &amp; integrity</h3>
+            <ul class="check">
+              <li>Retrieved text is treated as reference material, never as executable instruction.</li>
+              <li>Road status and agency data are answered from verified records.</li>
+              <li>Issue dates communicate the freshness of official advisories.</li>
+              <li>Unknown official facts are reported honestly rather than guessed.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-    <section id="quality" class="reveal"><div class="section-label">06 · Quality Assurance</div><h2 class="section-title">Verification completed for this submission.</h2><div class="grid"><div class="card span-4"><div class="metric">54</div><div class="metric-label">Backend automated tests passed</div></div><div class="card span-4"><div class="metric">0</div><div class="metric-label">Known npm production vulnerabilities reported</div></div><div class="card span-4"><div class="metric">0</div><div class="metric-label">Known Python dependency vulnerabilities reported</div></div></div><details open><summary>Recommended Department user-acceptance tests</summary><ul><li>Validate permits, routes, destination search and district-specific questions.</li><li>Confirm that a road-status response displays the actual available issue date.</li><li>Verify a Hindi or Nepali visitor prompt receives a clear response.</li><li>Upload an authorised circular and verify the public advisory projection.</li><li>Test wrong admin credentials, spoofed uploads and oversized request rejection.</li></ul></details></section>
+      <section id="quality" class="reveal">
+        <div class="section-label">06 · Quality Assurance</div>
+        <h2 class="section-title">Verification completed for this submission.</h2>
+        <div class="grid">
+          <div class="card span-4">
+            <div class="metric">54</div>
+            <div class="metric-label">Backend automated tests passed</div>
+          </div>
+          <div class="card span-4">
+            <div class="metric">0</div>
+            <div class="metric-label">Known npm production vulnerabilities reported</div>
+          </div>
+          <div class="card span-4">
+            <div class="metric">0</div>
+            <div class="metric-label">Known Python dependency vulnerabilities reported</div>
+          </div>
+        </div>
+        <details open>
+          <summary>Recommended Department user-acceptance tests</summary>
+          <ul>
+            <li>Validate permits, routes, destination search and district-specific questions.</li>
+            <li>Confirm that a road-status response displays the actual available issue date.</li>
+            <li>Verify a Hindi or Nepali visitor prompt receives a clear response.</li>
+            <li>Upload an authorised circular and verify the public advisory projection.</li>
+            <li>Test wrong admin credentials, spoofed uploads and oversized request rejection.</li>
+          </ul>
+        </details>
+      </section>
 
-    <section id="deployment" class="reveal"><div class="section-label">07 · Deployment &amp; Operations</div><h2 class="section-title">Controlled deployment requirements.</h2><div class="grid"><div class="card span-6"><h3>Production prerequisites</h3><ul class="check"><li>HTTPS frontend and backend domains.</li><li>Managed MySQL with TLS and tested backups.</li><li>Hosting-platform secret manager for all keys.</li><li>Reverse proxy/WAF with a request-body limit.</li><li>Restricted outbound access for optional scraper operation.</li></ul></div><div class="card span-6"><h3>Operational ownership</h3><p>The Department should assign owners for destination data, circular review, agency-directory synchronisation, admin access, backups, incident response, and periodic dependency review.</p><p style="margin-top:12px"><strong>Important:</strong> API keys, passwords, bootstrap secrets and database connection strings must never appear in documentation, source control, screenshots or email.</p></div></div></section>
+      <section id="deployment" class="reveal">
+        <div class="section-label">07 · Deployment &amp; Operations</div>
+        <h2 class="section-title">Controlled deployment requirements.</h2>
+        <div class="grid">
+          <div class="card span-6">
+            <h3>Production prerequisites</h3>
+            <ul class="check">
+              <li>HTTPS frontend and backend domains.</li>
+              <li>Managed MySQL with TLS and tested backups.</li>
+              <li>Hosting-platform secret manager for all keys.</li>
+              <li>Reverse proxy/WAF with a request-body limit.</li>
+              <li>Restricted outbound access for optional scraper operation.</li>
+            </ul>
+          </div>
+          <div class="card span-6">
+            <h3>Operational ownership</h3>
+            <p>The Department should assign owners for destination data, circular review, agency-directory
+              synchronisation, admin access, backups, incident response, and periodic dependency review.</p>
+            <p style="margin-top:12px"><strong>Important:</strong> API keys, passwords, bootstrap secrets and database
+              connection strings must never appear in documentation, source control, screenshots or email.</p>
+          </div>
+        </div>
+      </section>
 
-    <section id="acceptance" class="reveal"><div class="section-label">08 · Acceptance Criteria</div><h2 class="section-title">Conditions for Department-controlled release.</h2><ol><li>Department approves content, data governance, branding and hosting arrangements.</li><li>Production HTTPS, explicit CORS origins, secrets and MySQL TLS are configured.</li><li>The schema and required migrations have been reviewed, backed up and applied.</li><li>A Department administrator successfully completes secure setup and authenticated operations.</li><li>Public destination, chat, advisory and agency workflows pass acceptance tests.</li><li>Current backend tests, frontend build, and dependency security checks pass for the release candidate.</li><li>Backup, restoration, monitoring and incident contacts are documented by the operating team.</li></ol></section>
-  </article>
-</main>
-<footer class="footer" id="declaration"><div class="shell"><div class="eyebrow">Submission Declaration</div><h2 style="font:700 30px Georgia,serif;margin:8px 0">Prepared with respect for public service and information integrity.</h2><p>This Software Requirements Specification describes the Sikkim Tourism Assistant internship project, developed by Team Nexus for review by the Tourism &amp; Civil Aviation Department, Government of Sikkim.</p><div class="signature"><strong>Team Nexus</strong><br>Four-Developer Internship Team · ICFAI University Sikkim · Third-Year Students<br><br>Submitted to: Tourism &amp; Civil Aviation Department, Government of Sikkim</div></div></footer>
-<script>
-  "use strict";
-  // No network requests or user-supplied HTML are used by this document.
-  const root = document.documentElement, progress = document.getElementById("progress");
-  document.getElementById("theme").addEventListener("click", () => { root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark"; });
-  document.getElementById("print").addEventListener("click", () => window.print());
-  document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", async () => { const text = document.getElementById(button.dataset.copy).textContent; try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy schema command"; }, 1500); } catch { button.textContent = "Select text to copy"; } }));
-  const sections = [...document.querySelectorAll("main section")], links = [...document.querySelectorAll(".toc a")];
-  const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add("visible"); links.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id)); } }), { threshold:.12, rootMargin:"-10% 0px -68%" });
-  sections.forEach((section) => observer.observe(section));
-  addEventListener("scroll", () => { const max = document.documentElement.scrollHeight - innerHeight; progress.style.width = (max > 0 ? scrollY / max * 100 : 0) + "%"; }, { passive:true });
-</script>
+      <section id="acceptance" class="reveal">
+        <div class="section-label">08 · Acceptance Criteria</div>
+        <h2 class="section-title">Conditions for Department-controlled release.</h2>
+        <ol>
+          <li>Department approves content, data governance, branding and hosting arrangements.</li>
+          <li>Production HTTPS, explicit CORS origins, secrets and MySQL TLS are configured.</li>
+          <li>The schema and required migrations have been reviewed, backed up and applied.</li>
+          <li>A Department administrator successfully completes secure setup and authenticated operations.</li>
+          <li>Public destination, chat, advisory and agency workflows pass acceptance tests.</li>
+          <li>Current backend tests, frontend build, and dependency security checks pass for the release candidate.</li>
+          <li>Backup, restoration, monitoring and incident contacts are documented by the operating team.</li>
+        </ol>
+      </section>
+    </article>
+  </main>
+  <footer class="footer" id="declaration">
+    <div class="shell">
+      <div class="eyebrow">Submission Declaration</div>
+      <h2 style="font:700 30px Georgia,serif;margin:8px 0">Prepared with respect for public service and information
+        integrity.</h2>
+      <p>This Software Requirements Specification describes the Sikkim Tourism Assistant internship project, developed
+        by Team Nexus for review by the Tourism &amp; Civil Aviation Department, Government of Sikkim.</p>
+      <div class="signature"><strong>Team Nexus</strong><br>Four-Developer Internship Team · ICFAI University Sikkim ·
+        Third-Year Students<br><br>Submitted to: Tourism &amp; Civil Aviation Department, Government of Sikkim</div>
+    </div>
+  </footer>
+  <script>
+    "use strict";
+    // No network requests or user-supplied HTML are used by this document.
+    const root = document.documentElement, progress = document.getElementById("progress");
+    document.getElementById("theme").addEventListener("click", () => {root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";});
+    document.getElementById("print").addEventListener("click", () => window.print());
+    document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", async () => {const text = document.getElementById(button.dataset.copy).textContent; try {await navigator.clipboard.writeText(text); button.textContent = "Copied"; setTimeout(() => {button.textContent = "Copy schema command";}, 1500);} catch {button.textContent = "Select text to copy";} }));
+    const sections = [...document.querySelectorAll("main section")], links = [...document.querySelectorAll(".toc a")];
+    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {if (entry.isIntersecting) {entry.target.classList.add("visible"); links.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id));} }), {threshold: .12, rootMargin: "-10% 0px -68%"});
+    sections.forEach((section) => observer.observe(section));
+    addEventListener("scroll", () => {const max = document.documentElement.scrollHeight - innerHeight; progress.style.width = (max > 0 ? scrollY / max * 100 : 0) + "%";}, {passive: true});
+  </script>
 </body>
+
 </html>
