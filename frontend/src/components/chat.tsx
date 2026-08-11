@@ -423,12 +423,24 @@ function EmptyState({
 function CopyButton({ text }: { text: string }) {
     const [copied, setCopied] = useState(false);
     const theme = useChatTheme();
+    // Refreshed messages replace this bubble's content on every stream tick,
+    // so the "Copied!" reset timer can easily still be pending when React
+    // tears the button down. Track it so we can clear it on unmount instead
+    // of firing setState on a component that's no longer there.
+    const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+        };
+    }, []);
 
     const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(text);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+            resetTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
         } catch {
             // Clipboard API unavailable (non-https / old browser) — silently ignore.
         }
@@ -769,6 +781,13 @@ export function Chat({ compact = false }: { compact?: boolean }) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // Belt-and-suspenders re-entrancy lock for handleSend. The `isStreaming`
+    // state check alone isn't enough: state updates are batched, so two
+    // Enter presses (key repeat) or a double-click on Send fire before the
+    // textarea's `disabled` prop actually takes effect, and both calls read
+    // the same stale `isStreaming = false`. A ref is written synchronously,
+    // so the second call sees it immediately — no render round-trip needed.
+    const isSendingRef = useRef(false);
 
     // Check for Web Speech API support on mount
     useEffect(() => {
@@ -906,7 +925,8 @@ export function Chat({ compact = false }: { compact?: boolean }) {
         const image = imageOverride !== undefined ? imageOverride : pendingImage;
 
         // Require at least text OR an image.
-        if ((!trimmed && !image) || isStreaming) return;
+        if ((!trimmed && !image) || isStreaming || isSendingRef.current) return;
+        isSendingRef.current = true;
 
         setInput("");
         setPendingImage(null);
@@ -1061,12 +1081,26 @@ export function Chat({ compact = false }: { compact?: boolean }) {
                 return updated;
             });
         } finally {
-            setIsStreaming(false);
-            setLastSentHadImage(false);
-            abortControllerRef.current = null;
+            // Guard against a superseded call clobbering the turn that
+            // replaced it. `handleSend` is re-entrant by design — the abort
+            // above exists specifically to cancel a stale in-flight request
+            // — but that means TWO calls can both reach this `finally` block:
+            // the aborted one and the one that superseded it. Whichever call
+            // no longer owns `abortControllerRef.current` lost the race and
+            // must not touch shared state, or it'll flip `isStreaming` back
+            // to false mid-response and blow away the newer turn's messages
+            // with a conversation fetch that doesn't know about it yet.
+            const isCurrentRequest = abortControllerRef.current === abortController;
+            if (isCurrentRequest) {
+                setIsStreaming(false);
+                setLastSentHadImage(false);
+                abortControllerRef.current = null;
+                isSendingRef.current = false;
+            }
+
             // Keep a local connection error visible rather than replacing it
             // with the server's user-only conversation state.
-            if (currentConvId && shouldRefreshConversation) {
+            if (isCurrentRequest && currentConvId && shouldRefreshConversation) {
                 try {
                     const res = await fetchConversation(currentConvId);
                     // The backend never persists `suggestions` (they're streamed once,
