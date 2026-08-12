@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # Cross_Origin_Resource_Sharing--Conf
     allowed_origins: str = "http://localhost:5173"
     allowed_methods: str = "GET, POST, PUT, DELETE, OPTIONS"
-    allowed_headers: str = "Content-Type, Authorization, X-Admin-Key"
+    allowed_headers: str = "Content-Type, Authorization, X-Admin-Key, X-Conversation-Token"
 
     # Circular_Scraper--Conf.
     circulars_allowed_host: str = "sikkimtourism.gov.in"
@@ -135,14 +135,14 @@ class Settings(BaseSettings):
         """Reject unsafe browser-access and official-scraper settings."""
         if self.environment == "production" and self.allowed_origins == "*":
             raise ValueError("ALLOWED_ORIGINS cannot be '*' in production. Please specify explicit origins.")
-        
+
         if self.environment == "production" and any(not origin.startswith("https://") for origin in self.origins_list):
             raise ValueError("In production, all allowed origins must use 'HTTPS' for security reasons.")
-        
+
         if self.max_admin_upload_request_bytes < self.circulars_max_pdf_bytes:
             raise ValueError("MAX_ADMIN_UPLOAD_REQUEST_BYTES must be at least CIRCULARS_MAX_PDF_BYTES.")
         if self.mysql_host not in {"localhost", "127.0.0.1", "::1"}:
-            
+
             if not Path(self.mysql_ssl_ca_path).is_file():
                 raise ValueError("MYSQL_SSL_CA must point to a CA certificate for remote MySQL.")
 

@@ -394,25 +394,30 @@ export function runAdminSync(
 export async function createConversation(): Promise<{
   conversation: Conversation;
   messages: Message[];
+  accessToken: string;
 }> {
   const res = await apiFetch<{
     conversation: RawConversation;
     messages: RawMessage[];
+    access_token: string;
   }>("/conversations", { method: "POST" });
   return {
     conversation: mapConversation(res.conversation),
     messages: (res.messages ?? []).map(mapMessage),
+    accessToken: res.access_token,
   };
 }
 
-export async function fetchConversation(id: string): Promise<{
+export async function fetchConversation(id: string, accessToken: string): Promise<{
   conversation: Conversation;
   messages: Message[];
 }> {
   const res = await apiFetch<{
     conversation: RawConversation;
     messages: RawMessage[];
-  }>(`/conversations/${id}`);
+  }>(`/conversations/${id}`, {
+    headers: { "X-Conversation-Token": accessToken },
+  });
   return {
     conversation: mapConversation(res.conversation),
     messages: (res.messages ?? []).map(mapMessage),

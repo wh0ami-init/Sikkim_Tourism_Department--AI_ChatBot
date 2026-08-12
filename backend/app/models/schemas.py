@@ -359,10 +359,16 @@ class ChatRequest(BaseModel):
 
 
 class ConversationResponse(BaseModel):
-    """Response body for conversation create / fetch endpoints."""
+    """Response body for conversation create / fetch endpoints.
+
+    `access_token` is returned only when a conversation is created. It is a
+    bearer capability credential for anonymous conversation access and must
+    never be persisted server-side in plaintext.
+    """
 
     conversation: Conversation
     messages: list[Message] = Field(default_factory=list)
+    access_token: str | None = None
 
 
 class DestinationsListResponse(BaseModel):

@@ -111,15 +111,36 @@ def test_agency_district_aliases_and_followups_are_resolved():
 
 # ── /api/conversations endpoints (HTTP-level) ──────────────────────────────
 
-def test_create_then_fetch_conversation(client):
+def test_create_then_fetch_conversation_requires_access_token(client):
+    created = client.post("/api/conversations/")
+    assert created.status_code == 200
+    payload = created.json()
+    conv_id = payload["conversation"]["id"]
+    token = payload["access_token"]
+    assert token
+
+    denied = client.get(f"/api/conversations/{conv_id}")
+    assert denied.status_code == 401
+
+    fetched = client.get(
+        f"/api/conversations/{conv_id}",
+        headers={"X-Conversation-Token": token},
+    )
+    assert fetched.status_code == 200
+    assert fetched.json()["conversation"]["id"] == conv_id
+    assert fetched.json()["messages"] == []
+
+
+def test_conversation_rejects_wrong_access_token(client):
     created = client.post("/api/conversations/")
     assert created.status_code == 200
     conv_id = created.json()["conversation"]["id"]
 
-    fetched = client.get(f"/api/conversations/{conv_id}")
-    assert fetched.status_code == 200
-    assert fetched.json()["conversation"]["id"] == conv_id
-    assert fetched.json()["messages"] == []
+    denied = client.get(
+        f"/api/conversations/{conv_id}",
+        headers={"X-Conversation-Token": "wrong-token"},
+    )
+    assert denied.status_code == 404
 
 
 def test_fetch_conversation_rejects_malformed_id(client):
@@ -130,6 +151,17 @@ def test_fetch_conversation_rejects_malformed_id(client):
 def test_fetch_conversation_404s_when_unknown(client):
     resp = client.get("/api/conversations/11111111-1111-1111-1111-111111111111")
     assert resp.status_code == 404
+
+
+def test_chat_requires_access_token(client):
+    created = client.post("/api/conversations/")
+    conv_id = created.json()["conversation"]["id"]
+
+    resp = client.post(
+        f"/api/conversations/{conv_id}/chat",
+        json={"message": "Tell me about Gangtok"},
+    )
+    assert resp.status_code == 401
 
 
 def test_chat_rejects_malformed_conversation_id(client):
@@ -150,9 +182,15 @@ def test_chat_404s_on_unknown_conversation(client):
 
 def test_chat_rejects_empty_message_body(client):
     created = client.post("/api/conversations/")
-    conv_id = created.json()["conversation"]["id"]
+    payload = created.json()
+    conv_id = payload["conversation"]["id"]
+    token = payload["access_token"]
 
-    resp = client.post(f"/api/conversations/{conv_id}/chat", json={"message": ""})
+    resp = client.post(
+        f"/api/conversations/{conv_id}/chat",
+        headers={"X-Conversation-Token": token},
+        json={"message": ""},
+    )
     assert resp.status_code == 422
 
 
@@ -171,17 +209,23 @@ def test_chat_retry_replays_completed_turn_without_duplicate_model_call(client, 
     monkeypatch.setattr(chat, "generate_followups", lambda *_args: _empty_followups())
 
     created = client.post("/api/conversations/")
-    conv_id = created.json()["conversation"]["id"]
+    payload = created.json()
+    conv_id = payload["conversation"]["id"]
+    token = payload["access_token"]
     body = {"message": "Tell me about Gangtok", "client_message_id": "retry-test-1234"}
+    headers = {"X-Conversation-Token": token}
 
-    first = client.post(f"/api/conversations/{conv_id}/chat", json=body)
-    second = client.post(f"/api/conversations/{conv_id}/chat", json=body)
+    first = client.post(f"/api/conversations/{conv_id}/chat", headers=headers, json=body)
+    second = client.post(f"/api/conversations/{conv_id}/chat", headers=headers, json=body)
 
     assert first.status_code == second.status_code == 200
     assert first.text == second.text
     assert calls == 1
 
-    conversation = client.get(f"/api/conversations/{conv_id}")
+    conversation = client.get(
+        f"/api/conversations/{conv_id}",
+        headers=headers,
+    )
     assert [message["role"] for message in conversation.json()["messages"]] == [
         "user",
         "assistant",

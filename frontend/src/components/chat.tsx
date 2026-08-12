@@ -759,6 +759,7 @@ function Bubble({
 export function Chat({ compact = false }: { compact?: boolean }) {
     const theme = useChatTheme();
     const [conversationId, setConversationId] = useState<string | null>(null);
+    const [conversationAccessToken, setConversationAccessToken] = useState<string | null>(null);
     const [input, setInput] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -940,17 +941,23 @@ export function Chat({ compact = false }: { compact?: boolean }) {
             setIsListening(false);
         }
 
-        let currentConvId = conversationId;
-        if (!currentConvId) {
-            try {
-                const res = await createConversation();
-                setConversationId(res.conversation.id);
-                currentConvId = res.conversation.id;
-            } catch (e) {
-                console.error("Failed to create conversation", e);
-                return;
-            }
-        }
+let currentConvId = conversationId;
+let currentAccessToken = conversationAccessToken;
+
+if (!currentConvId || !currentAccessToken) {
+    try {
+        const res = await createConversation();
+
+        setConversationId(res.conversation.id);
+        setConversationAccessToken(res.accessToken);
+
+        currentConvId = res.conversation.id;
+        currentAccessToken = res.accessToken;
+    } catch (e) {
+        console.error("Failed to create conversation", e);
+        return;
+    }
+}
 
         const now = new Date().toISOString();
         // When only an image is sent, show a short display text in the bubble.
@@ -994,9 +1001,16 @@ export function Chat({ compact = false }: { compact?: boolean }) {
 
         let shouldRefreshConversation = true;
         try {
-            const response = await fetch(`/api/conversations/${currentConvId}/chat`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+if (!currentAccessToken) {
+    throw new Error("Conversation access token is missing. Please start a new conversation.");
+}
+
+const response = await fetch(`/api/conversations/${currentConvId}/chat`, {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "X-Conversation-Token": currentAccessToken,
+    },
                 body: JSON.stringify(requestBody),
                 signal: abortController.signal,
             });
@@ -1102,7 +1116,8 @@ export function Chat({ compact = false }: { compact?: boolean }) {
             // with the server's user-only conversation state.
             if (isCurrentRequest && currentConvId && shouldRefreshConversation) {
                 try {
-                    const res = await fetchConversation(currentConvId);
+if (!currentAccessToken) return;
+const res = await fetchConversation(currentConvId, currentAccessToken);
                     // The backend never persists `suggestions` (they're streamed once,
                     // live, via SSE) — so a plain overwrite here would wipe out any
                     // suggestion chips that just rendered. Match by position instead.

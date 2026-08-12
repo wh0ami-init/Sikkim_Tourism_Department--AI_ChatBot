@@ -20,6 +20,8 @@ Vision path (image attached):
 from __future__ import annotations
 
 import json
+import secrets
+import hashlib
 import logging
 import re
 from uuid import UUID
@@ -604,19 +606,30 @@ async def create_conversation(
         request: Request,
         repo: BaseRepository = Depends(get_repo),
 ):
-    conv = await repo.create_conversation()
-    return ConversationResponse(conversation=conv, messages=[])
+    access_token = secrets.token_urlsafe(32)
+    access_token_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+    conv = await repo.create_conversation(access_token_hash)
+    return ConversationResponse(
+        conversation=conv,
+        messages=[],
+        access_token=access_token,
+    )
 
 
 @router.get("/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(
         conversation_id: str,
+        request: Request,
         repo: BaseRepository = Depends(get_repo),
 ):
     if not _is_valid_uuid(conversation_id):
         raise HTTPException(status_code=400, detail="Invalid conversation ID format.")
 
-    conv = await repo.get_conversation(conversation_id)
+    access_token = request.headers.get("X-Conversation-Token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Conversation access token required.")
+
+    conv = await repo.get_conversation(conversation_id, access_token)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found.")
 
@@ -635,7 +648,11 @@ async def send_message(
     if not _is_valid_uuid(conversation_id):
         raise HTTPException(status_code=400, detail="Invalid conversation ID format.")
 
-    conv = await repo.get_conversation(conversation_id)
+    access_token = request.headers.get("X-Conversation-Token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Conversation access token required.")
+
+    conv = await repo.get_conversation(conversation_id, access_token)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found.")
 

@@ -146,13 +146,13 @@ class BaseRepository(ABC):
         """
         ...
     @abstractmethod
-    async def create_conversation(self) -> Conversation:
-        """Create and persist a new empty conversation, then return it."""
+    async def create_conversation(self, access_token_hash: str) -> Conversation:
+        """Create and persist a new empty conversation using a hashed access token."""
         ...
 
     @abstractmethod
-    async def get_conversation(self, conversation_id: str) -> Conversation | None:
-        """Return the conversation with the given UUID, or None if not found."""
+    async def get_conversation(self, conversation_id: str, access_token: str) -> Conversation | None:
+        """Return a conversation only when its bearer access token is valid."""
         ...
     @abstractmethod
     async def add_message(

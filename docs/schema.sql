@@ -47,9 +47,11 @@ CREATE TABLE IF NOT EXISTS destinations (
 -- ── Circulars ──────────────────────────────────────────────────────────────────
 -- See docs/migrations/003_add_circulars_table.sql for notes.
 CREATE TABLE IF NOT EXISTS conversations (
-                                             id         CHAR(36)   NOT NULL,
-    created_at DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
+                                             id                CHAR(36)   NOT NULL,
+    access_token_hash CHAR(64)   NOT NULL,
+    created_at        DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX idx_conversations_access_token_hash (access_token_hash)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Conversations ──────────────────────────────────────────────────────────────

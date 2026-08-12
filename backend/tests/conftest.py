@@ -105,11 +105,17 @@ class TestRepository:
         return record
     async def delete_destination(self, destination_id): return self.destinations.pop(destination_id, None) is not None
     async def search_destinations_for_rag(self, query): return await self.list_destinations(search=query)
-    async def create_conversation(self):
+    async def create_conversation(self, access_token_hash):
         conversation = Conversation()
-        self.conversations[conversation.id] = conversation
+        self.conversations[conversation.id] = (conversation, access_token_hash)
         return conversation
-    async def get_conversation(self, conversation_id): return self.conversations.get(conversation_id)
+    async def get_conversation(self, conversation_id, access_token):
+        import hashlib
+        row = self.conversations.get(conversation_id)
+        if not row:
+            return None
+        conversation, access_token_hash = row
+        return conversation if hashlib.sha256(access_token.encode()).hexdigest() == access_token_hash else None
     async def add_message(self, conversation_id, role, content, client_message_id=None):
         message = Message(conversation_id=conversation_id, role=role, content=content, client_message_id=client_message_id)
         self.messages.append(message)

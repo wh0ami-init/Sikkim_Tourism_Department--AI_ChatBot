@@ -604,20 +604,22 @@ class MySQLRepository(BaseRepository):
 
     # ── Conversations ────────────────────────────────────────────────────────
 
-    async def create_conversation(self) -> Conversation:
+    async def create_conversation(self, access_token_hash: str) -> Conversation:
         conv = Conversation()
         await asyncio.to_thread(
             self._execute,
-            "INSERT INTO conversations (id, created_at) VALUES (%s, %s)",
-            (conv.id, conv.created_at),
+            "INSERT INTO conversations (id, access_token_hash, created_at) VALUES (%s, %s, %s)",
+            (conv.id, access_token_hash, conv.created_at),
         )
         return conv
 
-    async def get_conversation(self, conversation_id: str) -> Conversation | None:
+    async def get_conversation(self, conversation_id: str, access_token: str) -> Conversation | None:
+        import hashlib
+        token_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
         rows = await asyncio.to_thread(
             self._query,
-            "SELECT * FROM conversations WHERE id = %s",
-            (conversation_id,),
+            "SELECT id, created_at FROM conversations WHERE id = %s AND access_token_hash = %s",
+            (conversation_id, token_hash),
         )
         return _row_to_conversation(rows[0]) if rows else None
 
