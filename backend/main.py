@@ -96,8 +96,8 @@ async def lifespan(app: FastAPI):
 
             scheduler.start()
             logger.info(
-            "Startup: Circular scraper scheduled to run every %d minutes.",
-            settings.circulars_sync_interval_minutes,
+                "Startup: Circular scraper scheduled to run every %d minutes.",
+                settings.circulars_sync_interval_minutes,
             )
     else:
         logger.info(
@@ -174,7 +174,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # HSTS --> HTTP_Strict_Transport_Security
         if settings.environment == "production":
             response.headers["Strict-Transport-Security"] = (
-                "max-age = 31536000; includeSubDomains"
+                "max-age=31536000; includeSubDomains"
             )
 
         return response
