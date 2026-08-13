@@ -14,7 +14,12 @@ from fastapi import Depends, Header, HTTPException, status
 
 from app.config import settings
 from app.database.factory import get_repo
-from app.services.admin_auth import verify_password
+from app.services.admin_auth import hash_password, verify_password
+
+
+# Run the same deliberately expensive scrypt operation for a nonexistent user
+# as for a wrong password. Without this, response time reveals valid usernames.
+_DUMMY_PASSWORD_HASH = hash_password("not-a-real-admin-password")
 
 
 async def verify_admin_key(x_admin_key: str | None = Header(default=None)) -> None:
@@ -73,7 +78,8 @@ async def verify_admin_credentials(
             detail="Invalid admin credentials.",
         )
     user = await repo.get_admin_user(username.lower())
-    if user is None or not verify_password(password, user.password_hash):
+    password_hash = user.password_hash if user is not None else _DUMMY_PASSWORD_HASH
+    if not verify_password(password, password_hash) or user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid admin credentials.",

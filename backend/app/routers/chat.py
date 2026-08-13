@@ -617,6 +617,7 @@ async def create_conversation(
 
 
 @router.get("/{conversation_id}", response_model=ConversationResponse)
+@limiter.limit("60/minute")
 async def get_conversation(
         conversation_id: str,
         request: Request,
@@ -681,12 +682,30 @@ async def send_message(
     )
 
     # 1. Persist user message (store text only — never persist raw image data).
-    await repo.add_message(
-        conversation_id,
-        "user",
-        body.message,
-        client_message_id=body.client_message_id,
-    )
+    try:
+        await repo.add_message(
+            conversation_id,
+            "user",
+            body.message,
+            client_message_id=body.client_message_id,
+        )
+    except Exception:
+        # The initial lookup and insert are separate transactions. Concurrent
+        # retries can both observe no row, then one loses the database's unique
+        # constraint race. Treat that as idempotency rather than a 500.
+        if body.client_message_id:
+            existing = await repo.get_message_by_client_id(
+                conversation_id, body.client_message_id
+            )
+            if existing:
+                replay = await _replay_completed_turn(repo, conversation_id, existing.id)
+                if replay:
+                    return replay
+                raise HTTPException(
+                    status_code=409,
+                    detail="This message is already being processed. Please retry shortly.",
+                ) from None
+        raise
 
     # 2. Build conversation history (all messages before this one)
     all_messages = await repo.list_messages(conversation_id)
@@ -820,12 +839,20 @@ async def send_message(
         finally:
             full_response = "".join(assistant_chunks)
             if full_response:
-                await repo.add_message(conversation_id, "assistant", full_response)
+                try:
+                    await repo.add_message(conversation_id, "assistant", full_response)
+                except Exception:
+                    # The response was already delivered. Do not turn a storage
+                    # outage into a malformed stream or retry the model call.
+                    logger.exception("Failed to persist assistant response")
                 if settings.enable_followups:
                     # Best-effort and opt-in: this is an extra LLM call.
-                    suggestions = await generate_followups(body.message, full_response)
-                    if suggestions:
-                        yield f"data: {json.dumps({'suggestions': suggestions})}\n\n"
+                    try:
+                        suggestions = await generate_followups(body.message, full_response)
+                        if suggestions:
+                            yield f"data: {json.dumps({'suggestions': suggestions})}\n\n"
+                    except Exception:
+                        logger.exception("Failed to generate follow-up suggestions")
             yield "data: [DONE]\n\n"
 
     return _sse_response(event_generator())

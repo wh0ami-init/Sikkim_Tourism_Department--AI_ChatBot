@@ -181,7 +181,13 @@ class MySQLRepository(BaseRepository):
                 "autocommit": True,
             }
             if require_tls:
-                connection_options.update({"ssl_ca": ssl_ca, "ssl_verify_cert": True})
+                connection_options.update(
+                    {
+                        "ssl_ca": ssl_ca,
+                        "ssl_verify_cert": True,
+                        "ssl_verify_identity": True,
+                    }
+                )
             self._pool = mysql_pooling.MySQLConnectionPool(
                 **connection_options,
             )

@@ -62,6 +62,7 @@ class Settings(BaseSettings):
 
     # Restricted_File_Uploads--Conf.
     max_admin_upload_request_bytes: int = 16 * 1024 * 1024
+    max_chat_request_bytes: int = 6 * 1024 * 1024
 
     # Administrator_Authentication--Conf.
     admin_api_key: str = ""
@@ -136,11 +137,26 @@ class Settings(BaseSettings):
         if self.environment == "production" and self.allowed_origins == "*":
             raise ValueError("ALLOWED_ORIGINS cannot be '*' in production. Please specify explicit origins.")
 
+        if self.environment == "production" and not self.origins_list:
+            raise ValueError("ALLOWED_ORIGINS must contain at least one explicit origin in production.")
+
         if self.environment == "production" and any(not origin.startswith("https://") for origin in self.origins_list):
             raise ValueError("In production, all allowed origins must use 'HTTPS' for security reasons.")
 
+        if self.environment == "production" and (
+                "*" in self.methods_list or "*" in self.headers_list
+        ):
+            raise ValueError("Wildcard CORS methods or headers are not allowed in production.")
+
+        if self.environment == "production" and len(self.admin_api_key) < 32:
+            raise ValueError(
+                "ADMIN_API_KEY must contain at least 32 characters in production."
+            )
+
         if self.max_admin_upload_request_bytes < self.circulars_max_pdf_bytes:
             raise ValueError("MAX_ADMIN_UPLOAD_REQUEST_BYTES must be at least CIRCULARS_MAX_PDF_BYTES.")
+        if self.max_chat_request_bytes < 5_600_000:
+            raise ValueError("MAX_CHAT_REQUEST_BYTES must allow the maximum validated chat payload.")
         if self.mysql_host not in {"localhost", "127.0.0.1", "::1"}:
 
             if not Path(self.mysql_ssl_ca_path).is_file():

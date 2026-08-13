@@ -13,15 +13,15 @@ Government of Sikkim
 ICFAI University Sikkim  
 Third-Year Students
 
-**Document version:** 1.0  
-**Date:** 9 August 2026  
-**Project status:** Internship Project / Production-Readiness Submission
+**Document version:** 1.1
+
+**Date:** 13 August 2026
+
+**Project status:** Deployed implementation / Department handover
 
 **Interactive submission version:** [Open the professional HTML SRS](SRS_Sikkim_Tourism_Assistant.html)
 
 **Standalone database ER diagram:** [Open/download the SVG ER diagram](Sikkim_Tourism_ER_Diagram.svg)
-
-**Animated project presentation:** [Open the Web-PPT](Sikkim_Tourism_Assistant_Web_Presentation.html)
 
 ---
 
@@ -32,7 +32,7 @@ Third-Year Students
 | Document title | Software Requirements Specification — Sikkim Tourism Assistant |
 | Intended audience | Tourism & Civil Aviation Department, Government of Sikkim; technical reviewers; project evaluators; deployment administrators |
 | Prepared by | Team Nexus, ICFAI University Sikkim |
-| Review status | Submission draft |
+| Review status | Department handover candidate |
 | Classification | Departmental project documentation |
 
 ### Revision History
@@ -40,6 +40,7 @@ Third-Year Students
 | Version | Date | Description |
 | --- | --- | --- |
 | 1.0 | 9 August 2026 | Initial submission-ready SRS |
+| 1.1 | 13 August 2026 | Security hardening, deployment handover, verification, and final interface documentation updated |
 
 ---
 
@@ -242,6 +243,10 @@ MySQL records        Qdrant retrieval       AI providers
 | NFR-08 | The official circular scraper shall be restricted to the approved `sikkimtourism.gov.in` HTTPS host. |
 | NFR-09 | User input shall be length-limited and validated before use. |
 | NFR-10 | Public errors shall not disclose internal exception details or credentials. |
+| NFR-10a | Remote MySQL connections shall validate both the configured certificate authority and the server certificate identity. |
+| NFR-10b | Chat and upload request bodies shall be bounded before JSON or multipart parsing. |
+| NFR-10c | Production bootstrap secrets shall meet the configured 32-character minimum. |
+| NFR-10d | Retrieved, OCR, and live-web content shall be treated as untrusted data and shall not be allowed to override system instructions. |
 
 ### 5.2 Performance Requirements
 
@@ -352,7 +357,9 @@ Administrative endpoints are intentionally protected and shall not be used witho
 - Subsequent admin actions require HTTP Basic authentication over HTTPS.
 - Passwords are salted and hashed using scrypt.
 - Admin operations are rate-limited to reduce password-guessing and costly authentication attempts.
+- Login verification performs equivalent password-hash work for unknown users to reduce username-enumeration timing signals.
 - The bootstrap secret must be generated securely and rotated if exposed.
+- In production, the bootstrap secret must be at least 32 characters long.
 
 ### 8.2 Browser Protections
 
@@ -368,12 +375,13 @@ Administrative endpoints are intentionally protected and shall not be used witho
 - Image chat payloads are size-limited and validated against their byte signatures.
 - Circular uploads are checked before OCR processing and limited in size.
 - Uploaded circular images and PDFs must carry recognised file signatures; client-provided MIME labels alone are not trusted.
+- Chat and upload requests are rejected when their declared or streamed body exceeds the configured server limit.
 - Destination imagery is restricted to local public image paths to avoid untrusted remote URL injection.
 
 ### 8.4 AI Safety Controls
 
-- Retrieved documents are treated as reference material, not instructions.
-- The assistant is instructed not to obey prompt-injection content found in retrieved records.
+- Retrieved documents, OCR output, live web content, images, and conversation history are treated as reference data, not instructions.
+- Instruction-like prompt-injection text is removed from untrusted retrieved context before it is supplied to the answer model.
 - Official agency contacts, registration numbers, and road-status facts are handled from verified database context rather than AI guesswork.
 - Current circular data includes issue dates so visitors can assess timeliness.
 - When official information is unavailable, the assistant shall state this clearly.
@@ -399,7 +407,7 @@ MYSQL_PASSWORD=<strong-secret>
 MYSQL_DATABASE=sikkim_tourism
 GEMINI_API_KEY=<secret>
 GROQ_API_KEY=<secret>
-ADMIN_API_KEY=<strong-bootstrap-secret>
+ADMIN_API_KEY=<at-least-32-character-bootstrap-secret>
 ```
 
 ### 9.3 Deployment Checklist
@@ -410,6 +418,7 @@ ADMIN_API_KEY=<strong-bootstrap-secret>
 - [ ] Confirm remote MySQL TLS/CA configuration.
 - [ ] Configure database backups and restoration testing.
 - [ ] Place the backend behind HTTPS, a reverse proxy/WAF, and a request-size limit.
+- [ ] Use a WAF or shared/distributed rate limiter before operating more than one backend instance.
 - [ ] Set restrictive outbound network controls for optional scraping.
 - [ ] Create the first administrator account using a securely generated bootstrap secret.
 - [ ] Remove or rotate the bootstrap secret after initial setup according to Department policy.
@@ -425,11 +434,11 @@ At the time of this document version, the project verification included:
 
 | Check | Result |
 | --- | --- |
-| Backend automated tests | 54 tests passed |
+| Backend automated tests | 68 tests passed |
 | Frontend production build | Passed using TypeScript and Vite build process |
-| JavaScript production dependency audit | No known vulnerabilities reported |
-| Python dependency audit | No known vulnerabilities reported |
-| Source review | Legacy production mock/demo paths removed; upload validation and public-data boundaries reviewed |
+| JavaScript production dependency audit | No known advisories reported for the deployment lockfile at the last audit |
+| Python dependency audit | No known advisories reported for `requirements.txt` at the last audit |
+| Security regression tests | Auth failure, public rate limits, SSRF allow-list rejection, malformed input, request-size limits, and RAG context handling covered |
 
 ### 10.2 Recommended User Acceptance Testing
 
@@ -477,7 +486,46 @@ The following enhancements are recommended for a future approved phase:
 
 ---
 
-## 13. Acceptance Criteria
+## 13. Department Handover and Operational Ownership
+
+This repository is delivered as a deployed implementation and technical
+handover. The Department becomes the operational owner when it integrates the
+service with the official domain.
+
+### 13.1 Handover package
+
+The handover package shall include this SRS, the project README, source code,
+database schema and migrations, environment-variable template, deployment
+configuration, automated tests, and the current deployment URLs. Production
+secrets shall be transferred only through an approved secret-management
+process, never through source control, email attachments, or public documents.
+
+### 13.2 Department-controlled actions
+
+Before public release, the Department shall:
+
+1. set `ALLOWED_ORIGINS` to the exact final HTTPS origin under
+   `sikkimtourism.gov.in` (or the Department-approved official frontend host);
+2. control DNS, custom-domain configuration, certificates, Railway/Vercel
+   access, production secrets, backups, and restoration testing;
+3. nominate administrators and establish MFA/SSO, credential rotation, and
+   administrator off-boarding procedures;
+4. adopt a privacy notice, conversation-retention schedule, content-review
+   workflow, incident-response process, and accessibility acceptance process;
+5. deploy WAF/DDoS controls and distributed rate limiting where the backend is
+   scaled beyond one instance; and
+6. obtain independent security testing and formal approval before public use.
+
+### 13.3 Operational limitation
+
+The application-level limiter is suitable for an individual backend process.
+It is not a replacement for an edge/WAF or shared rate-limit store when
+multiple Railway instances are active. This is an infrastructure decision for
+the Department's deployment team.
+
+---
+
+## 14. Acceptance Criteria
 
 The project shall be considered ready for Department-controlled deployment when:
 
@@ -492,7 +540,7 @@ The project shall be considered ready for Department-controlled deployment when:
 
 ---
 
-## 14. Declaration
+## 15. Declaration
 
 This document describes the Sikkim Tourism Assistant developed as an internship project by **Team Nexus**, a four-developer team of **third-year students of ICFAI University Sikkim**. The project is respectfully submitted for review by the Tourism & Civil Aviation Department, Government of Sikkim.
 

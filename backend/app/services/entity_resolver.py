@@ -157,9 +157,11 @@ async def resolve_travel_agency(
     if best_score >= 0.92 and (best_score - second_score >= 0.05 or second_score < 0.88):
         return AgencyResolution(status="matched", query_name=query_name, agency=best, confidence=best_score)
 
+    close = [a for score, a in ranked if score >= max(0.70, best_score - 0.08)][:5]
     if best_score >= 0.82 and second_score < 0.70:
         return AgencyResolution(status="ambiguous", query_name=query_name, confidence=best_score, candidates=close)
 
-    close = [a for score, a in ranked if score >= max(0.70, best_score - 0.08)][:5]
     if best_score >= 0.70:
         return AgencyResolution(status="not_found", query_name=query_name, confidence=best_score, candidates=[a for _, a in ranked[:5]])
+
+    return AgencyResolution(status="not_found", query_name=query_name, confidence=best_score)

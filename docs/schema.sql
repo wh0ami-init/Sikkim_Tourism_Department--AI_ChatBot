@@ -44,8 +44,7 @@ CREATE TABLE IF NOT EXISTS destinations (
     FULLTEXT KEY ft_destinations (name, description)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ── Circulars ──────────────────────────────────────────────────────────────────
--- See docs/migrations/003_add_circulars_table.sql for notes.
+-- ── Conversations ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS conversations (
                                              id                CHAR(36)   NOT NULL,
     access_token_hash CHAR(64)   NOT NULL,
@@ -54,7 +53,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     INDEX idx_conversations_access_token_hash (access_token_hash)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ── Conversations ──────────────────────────────────────────────────────────────
+-- ── Messages ───────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS messages (
                                         id              CHAR(36)                    NOT NULL,
     conversation_id CHAR(36)                    NOT NULL,
@@ -69,7 +68,7 @@ CREATE TABLE IF NOT EXISTS messages (
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ── Messages ───────────────────────────────────────────────────────────────────
+-- ── Circulars ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS circulars (
                                          id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
                                          title           VARCHAR(300)  NOT NULL,
@@ -83,7 +82,20 @@ CREATE TABLE IF NOT EXISTS circulars (
     PRIMARY KEY (id),
     UNIQUE KEY uq_circulars_pdf_hash (pdf_hash),
     INDEX idx_circulars_category_date (category, issue_date)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Administrator accounts ────────────────────────────────────────────────────
+-- New installations must include this table; migration 004 remains for existing
+-- databases created before password-based admin access was introduced.
+CREATE TABLE IF NOT EXISTS admin_users (
+    id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username      VARCHAR(64)  NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_admin_users_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Travel Agencies ───────────────────────────────────────────────────────────
 -- See docs/migrations/005_add_travel_agencies_table.sql for notes.

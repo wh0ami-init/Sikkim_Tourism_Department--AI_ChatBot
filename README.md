@@ -7,9 +7,9 @@
 ### AI-Powered Visitor Information System
 **Tourism & Civil Aviation Department, Government of Sikkim**
 
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-41%2F41%20passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](#quality-assurance--verification)
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-68%20passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](#quality-assurance--verification)
 [![Frontend Build](https://img.shields.io/badge/frontend%20build-passing-brightgreen?style=for-the-badge&logo=vite&logoColor=white)](#quality-assurance--verification)
-[![Security Audit](https://img.shields.io/badge/security%20audit-0%20vulnerabilities-brightgreen?style=for-the-badge&logo=shieldsdotio&logoColor=white)](#security-controls)
+[![Security Controls](https://img.shields.io/badge/security-controls%20reviewed-blue?style=for-the-badge&logo=shieldsdotio&logoColor=white)](#security-controls)
 [![Python](https://img.shields.io/badge/python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](#requirements)
 [![Node](https://img.shields.io/badge/node-20%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](#requirements)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](#architecture)
@@ -31,7 +31,7 @@
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
-- [Production Deployment](#production-deployment)
+- [Production Deployment & Handover](#production-deployment--handover)
 - [Admin Operations](#admin-operations)
 - [Circular Ingestion](#circular-ingestion)
 - [MySQL Setup](#mysql-setup)
@@ -58,8 +58,8 @@ Upon deployment, the system will:
   as they are published or manually ingested by department staff;
 - provide department administrators with a secure console through which the
   destination catalogue and official circulars can be maintained; and
-- remain operable without any external managed database, so that it may be
-  evaluated, demonstrated, or run locally prior to full production rollout.
+- support local development and controlled Department handover before
+  official-domain integration.
 
 All configuration, credentials, and data ingestion pathways described in this
 document have been designed for **official, single-department use** and
@@ -203,7 +203,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ---
 
-## Production Deployment
+## Production Deployment & Handover
 
 The sanctioned deployment topology will be **Vercel (frontend) + Railway
 (backend)**.
@@ -221,10 +221,10 @@ The sanctioned deployment topology will be **Vercel (frontend) + Railway
 
    ```ini
    ENVIRONMENT=production
-   ALLOWED_ORIGINS=https://<official-vercel-domain>
+   ALLOWED_ORIGINS=https://<official-frontend-domain>
    GEMINI_API_KEY=<secret>
    GROQ_API_KEY=<secret>
-   ADMIN_API_KEY=<secret>
+   ADMIN_API_KEY=<at-least-32-character-bootstrap-secret>
    ```
 
 4. Should the Railway public URL change, the `/api/:path*` rewrite
@@ -235,12 +235,27 @@ In production, OpenAPI documentation will remain hidden, and the Vercel
 configuration will apply Content-Security-Policy, HSTS, anti-framing,
 no-sniff, referrer, and permissions headers to every frontend response.
 
-The backend must be deployed behind a reverse proxy/WAF that enforces HTTPS,
-a 16 MiB maximum request body (`client_max_body_size 16m` for Nginx), and a
-restrictive outbound-egress policy. When the optional Selenium scraper is
-enabled, permit browser traffic only to the configured government host: an
-application-level redirect check cannot stop a browser's first request to a
-malicious redirect target.
+The backend enforces request-size limits for chat and circular uploads. The
+Department should additionally use a WAF or gateway with distributed rate
+limiting when running more than one backend instance. The in-process limiter
+cannot coordinate counters across multiple containers.
+
+### Department handover responsibilities
+
+The Department's hosting and security team must complete the following before
+the service is integrated into `sikkimtourism.gov.in`:
+
+- set the final official HTTPS frontend origin in `ALLOWED_ORIGINS` — never use
+  a wildcard;
+- manage all production secrets in Railway or the approved secret manager;
+- rotate the bootstrap secret after first-admin setup and define administrator
+  ownership, MFA/SSO, and credential-recovery policy;
+- configure database backups, restore testing, monitoring, incident contacts,
+  and a WAF/distributed limiter;
+- approve privacy notice, retention rules, accessibility testing, and the
+  operational workflow for validating destinations and circulars; and
+- commission independent vulnerability assessment / penetration testing before
+  public launch under the official domain.
 
 ---
 
@@ -295,14 +310,9 @@ MySQL is required for every deployment (including local development):
 
 2. The `MYSQL_*` values should be set in `backend/.env`.
 
-3. A **new, empty** database may optionally be seeded from the development
-   catalogue:
-
-   ```bash
-   cd backend
-   source v_env/bin/activate
-   python seed_destinations.py
-   ```
+3. Populate the destination catalogue through the protected `/admin` console
+   or an approved operational import. This repository does not include a
+   destination seed script.
 
 4. Migrations under [`docs/migrations`](docs/migrations) should be applied
    only when an existing schema is being upgraded. New installations should
@@ -346,15 +356,23 @@ data: [DONE]
 The following controls have been implemented and will remain in force for
 every deployment of this system:
 
-- Rate limiting will protect conversation creation, chat, admin setup,
-  admin login, and file uploads.
+- Rate limiting will protect public database-backed routes, conversation
+  creation, chat, admin setup, admin login, and protected admin operations.
 - Admin bootstrap will fail closed in the absence of `ADMIN_API_KEY`; every
   subsequent admin request will be authenticated against scrypt password
   hashes using constant-time comparison.
 - API responses will carry CSP, no-sniff, anti-framing, referrer,
   permissions, cache, and — in production — HSTS headers.
 - Vercel will apply equivalent browser protections to the frontend.
-- Production CORS will accept only explicit HTTPS origins.
+- Production CORS will accept only explicit HTTPS origins, with wildcard
+  methods and headers rejected.
+- Remote MySQL connections will verify the certificate authority and server
+  identity.
+- Chat and upload request bodies will be bounded before JSON or multipart
+  parsing can allocate unbounded memory.
+- Retrieved, OCR, and web-search context will be treated as untrusted data;
+  instruction-like prompt-injection text will be removed before it reaches the
+  answer model.
 - Image attachments and circular uploads will be subject to MIME,
   signature, size, and payload validation before processing.
 - The circular scraper will enforce a host allow-list and bounded,
@@ -384,9 +402,10 @@ npm run build
 
 | Check | Result |
 | --- | --- |
-| Backend test suite | ✅ **41 / 41 passing** |
+| Backend test suite | ✅ **68 passing** |
 | Frontend production build (`tsc && vite build`) | ✅ **Clean, no errors** |
-| Frontend dependency audit (`npm audit`) | ✅ **0 vulnerabilities** |
+| Python dependency audit | ✅ No known advisories reported for `requirements.txt` at the last audit. |
+| Frontend dependency audit | ✅ No known advisories reported for the lockfile at the last audit. |
 | SQL injection review (`mysql_repo.py`) | ✅ **All queries parameterised** |
 | SSRF review (circular scraper) | ✅ **Host allow-list enforced, redirects blocked** |
 | Admin authentication review | ✅ **scrypt hashing, constant-time comparison, fail-closed bootstrap** |
@@ -414,7 +433,6 @@ backend/
     startup.py       Vector-store population and synchronisation
   tests/             Backend regression tests
   main.py            FastAPI application and admin routes
-  seed_destinations.py
   requirements.txt   Single Python dependency manifest
 frontend/
   src/               React pages, components, hooks, and API client

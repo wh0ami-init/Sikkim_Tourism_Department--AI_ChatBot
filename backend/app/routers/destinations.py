@@ -3,11 +3,12 @@ Python_Version_Integrate_Destinations_Router — Read-Only Public API Endpoints.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.database.base import BaseRepository
 from app.database.factory import get_repo
 from app.models.schemas import AdvisorySummary, Destination, DestinationSummary, DestinationsListResponse
+from app.limiting import limiter
 
 router = APIRouter()
 
@@ -38,7 +39,9 @@ def _to_summary(d: Destination) -> DestinationSummary:
 
 # Python_Version_Integrate_List_Destinations--Endpoint
 @router.get("", response_model=DestinationsListResponse)
+@limiter.limit("60/minute")
 async def list_destinations(
+        request: Request,
         search: str | None = Query(None, max_length=100),
         category: str | None = Query(None),
         repo: BaseRepository = Depends(get_repo),
@@ -58,12 +61,15 @@ async def list_destinations(
 
 # Python_Version_Integrate_List_Categories--Endpoint
 @router.get("/categories")
-async def list_categories():
+@limiter.limit("60/minute")
+async def list_categories(request: Request):
     return {"categories": sorted(VALID_CATEGORIES)}
 
 
 @router.get("/advisories", response_model=list[AdvisorySummary])
+@limiter.limit("30/minute")
 async def list_public_advisories(
+        request: Request,
         limit: int = Query(3, ge=1, le=5),
         repo: BaseRepository = Depends(get_repo),
 ):
@@ -89,8 +95,10 @@ async def list_public_advisories(
 
 # Python_Version_Integrate_Get_Destination--Endpoint
 @router.get("/{destination_id}", response_model=Destination)
+@limiter.limit("60/minute")
 async def get_destination(
         destination_id: int,
+        request: Request,
         repo: BaseRepository = Depends(get_repo),
 ):
     destination = await repo.get_destination(destination_id)

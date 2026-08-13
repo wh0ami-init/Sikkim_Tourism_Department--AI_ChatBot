@@ -93,6 +93,13 @@ class BaseRepository(ABC):
         ...
 
     @abstractmethod
+    async def get_travel_agency_by_name(
+            self, name: str, district: str | None = None
+    ) -> TravelAgency | None:
+        """Return one exact agency-name match, optionally within a district."""
+        ...
+
+    @abstractmethod
     async def agency_exists(self, registration_number: str) -> bool:
         """True if an agency with this registration number has already been synced."""
         ...

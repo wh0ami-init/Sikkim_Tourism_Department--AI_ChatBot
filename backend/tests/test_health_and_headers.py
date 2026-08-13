@@ -81,6 +81,32 @@ def test_oversized_admin_upload_is_rejected_before_multipart_parsing(client, mon
     assert "no-store" in response.headers["cache-control"]
 
 
+def test_oversized_chat_body_is_rejected_before_json_parsing(client, monkeypatch):
+    """The streaming guard also protects the public JSON chat endpoint."""
+    from app.config import settings
+
+    created = client.post("/api/conversations/").json()
+    monkeypatch.setattr(settings, "max_chat_request_bytes", 1)
+    response = client.post(
+        f"/api/conversations/{created['conversation']['id']}/chat",
+        content=b"{}",
+        headers={"X-Conversation-Token": created["access_token"]},
+    )
+    assert response.status_code == 413
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_public_health_rate_limit_triggers(client):
+    """A public endpoint must return 429 after its configured request budget."""
+    from app.limiting import limiter
+
+    limiter.reset()
+    for _ in range(60):
+        assert client.get("/api/health").status_code == 200
+    assert client.get("/api/health").status_code == 429
+    limiter.reset()
+
+
 def test_scraper_allowlist_rejects_credentials_and_nonstandard_ports():
     assert _is_allowed_url("https://sikkimtourism.gov.in/updates/notice")
     assert not _is_allowed_url("https://sikkimtourism.gov.in:8443/private")
@@ -98,9 +124,22 @@ def test_production_rejects_whitespace_padded_wildcard_cors():
 
 
 def test_environment_is_normalised_before_security_checks():
-    settings = Settings(environment=" Production ", allowed_origins="https://example.com ")
+    settings = Settings(
+        environment=" Production ",
+        allowed_origins="https://example.com ",
+        admin_api_key="a" * 32,
+    )
     assert settings.environment == "production"
     assert settings.origins_list == ["https://example.com"]
+
+
+def test_production_requires_a_high_entropy_bootstrap_key():
+    with pytest.raises(ValidationError, match="ADMIN_API_KEY"):
+        Settings(
+            environment="production",
+            allowed_origins="https://example.com",
+            admin_api_key="short-key",
+        )
 
 
 def test_circular_scraper_is_locked_to_the_official_tourism_domain():

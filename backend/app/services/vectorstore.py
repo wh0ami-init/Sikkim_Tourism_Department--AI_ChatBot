@@ -16,7 +16,7 @@ from functools import lru_cache
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, Filter, FilterSelector, VectorParams
+from qdrant_client.models import Distance, Filter, FilterSelector, PointIdsList, VectorParams
 
 from app.config import settings
 
@@ -160,6 +160,34 @@ def clear_collection(client: QdrantClient) -> None:
         collection_name=settings.qdrant_collection,
         points_selector=FilterSelector(filter=Filter(must=[])),
     )
+
+
+def delete_points_except(client: QdrantClient, point_ids: set[str]) -> None:
+    """Prune records absent from a completed snapshot without a blank interval.
+
+    New documents are written before this function runs. If embedding or
+    upserting fails, the previous snapshot remains retrievable instead of
+    turning a transient provider failure into an empty RAG knowledge base.
+    """
+    offset = None
+    stale_ids: list[str] = []
+    while True:
+        records, offset = client.scroll(
+            collection_name=settings.qdrant_collection,
+            limit=256,
+            offset=offset,
+            with_payload=False,
+            with_vectors=False,
+        )
+        stale_ids.extend(str(record.id) for record in records if str(record.id) not in point_ids)
+        if offset is None:
+            break
+
+    if stale_ids:
+        client.delete(
+            collection_name=settings.qdrant_collection,
+            points_selector=PointIdsList(points=stale_ids),
+        )
 
 def get_vectorstore() -> QdrantVectorStore:
     """

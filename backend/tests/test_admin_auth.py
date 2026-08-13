@@ -1,4 +1,8 @@
 """Tests for protected administrative operations."""
+import pytest
+from fastapi import HTTPException
+
+from app import dependencies
 from app.services.admin_auth import hash_password, verify_password
 def test_sync_rejected_with_no_credentials(client):
     resp = client.post("/api/admin/sync")
@@ -37,3 +41,21 @@ def test_dashboard_uses_the_repository_agency_count(client, admin_headers, repos
 
     assert response.status_code == 200
     assert response.json()["travel_agency_count"] == 1_856
+
+
+@pytest.mark.asyncio
+async def test_unknown_admin_username_uses_dummy_scrypt_hash(repository, monkeypatch):
+    """A missing account must consume equivalent password-verification work."""
+    observed_hashes: list[str] = []
+
+    def capture_verify(_password: str, password_hash: str) -> bool:
+        observed_hashes.append(password_hash)
+        return False
+
+    monkeypatch.setattr(dependencies, "verify_password", capture_verify)
+    with pytest.raises(HTTPException, match="Invalid admin credentials"):
+        await dependencies.verify_admin_credentials(
+            authorization="Basic dW5rbm93bjp3cm9uZw==", repo=repository
+        )
+
+    assert observed_hashes == [dependencies._DUMMY_PASSWORD_HASH]

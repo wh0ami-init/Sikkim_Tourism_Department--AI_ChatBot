@@ -941,23 +941,29 @@ export function Chat({ compact = false }: { compact?: boolean }) {
             setIsListening(false);
         }
 
-let currentConvId = conversationId;
-let currentAccessToken = conversationAccessToken;
+        let currentConvId = conversationId;
+        let currentAccessToken = conversationAccessToken;
 
-if (!currentConvId || !currentAccessToken) {
-    try {
-        const res = await createConversation();
+        if (!currentConvId || !currentAccessToken) {
+            try {
+                const res = await createConversation();
 
-        setConversationId(res.conversation.id);
-        setConversationAccessToken(res.accessToken);
+                setConversationId(res.conversation.id);
+                setConversationAccessToken(res.accessToken);
 
-        currentConvId = res.conversation.id;
-        currentAccessToken = res.accessToken;
-    } catch (e) {
-        console.error("Failed to create conversation", e);
-        return;
-    }
-}
+                currentConvId = res.conversation.id;
+                currentAccessToken = res.accessToken;
+            } catch (e) {
+                console.error("Failed to create conversation", e);
+                setFailedTurn({
+                    text: trimmed,
+                    image: image ?? null,
+                    clientMessageId: retryClientMessageId ?? crypto.randomUUID(),
+                });
+                isSendingRef.current = false;
+                return;
+            }
+        }
 
         const now = new Date().toISOString();
         // When only an image is sent, show a short display text in the bubble.

@@ -23,7 +23,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database.factory import get_repo
-from app.dependencies import verify_admin_credentials, verify_admin_key
+from app.dependencies import _DUMMY_PASSWORD_HASH, verify_admin_credentials, verify_admin_key
 from app.limiting import limiter
 from app.routers import chat, destinations
 from app.startup import resync_vectorstore, populate_vectorstore
@@ -36,6 +36,71 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+class RequestBodyTooLarge(Exception):
+    """Raised before an oversized request body reaches FastAPI's parsers."""
+
+
+class RequestSizeLimitMiddleware:
+    """Bound streamed request bodies before JSON or multipart parsing allocates memory."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    @staticmethod
+    def _limit_for_path(path: str) -> int | None:
+        if path == "/api/admin/upload-circular":
+            return settings.max_admin_upload_request_bytes
+        if path.startswith("/api/conversations/") and path.endswith("/chat"):
+            return settings.max_chat_request_bytes
+        return None
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        limit = self._limit_for_path(scope["path"])
+        if limit is None:
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+        content_length = headers.get(b"content-length")
+        if content_length is not None:
+            try:
+                if int(content_length) > limit:
+                    await JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request exceeds the server limit."},
+                    )(scope, receive, send)
+                    return
+            except ValueError:
+                await JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid Content-Length header."},
+                )(scope, receive, send)
+                return
+
+        received = 0
+
+        async def limited_receive():
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    raise RequestBodyTooLarge
+            return message
+
+        try:
+            await self.app(scope, limited_receive, send)
+        except RequestBodyTooLarge:
+            await JSONResponse(
+                status_code=413,
+                content={"detail": "Request exceeds the server limit."},
+            )(scope, receive, send)
 
 # ── [[ || ]] ───────────────────────────────────────────────────
 # ── FastAPI_LIFESPAN_FUNCTION ───────────────────────────────────────────────────
@@ -117,25 +182,7 @@ async def lifespan(app: FastAPI):
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Applied Browser Protections consistently to every API response."""
 
-    async def dispatch(self, request, call_next):
-
-        # First_Security_Check --> Upload_Endpoint
-        if request.url.path == "/api/admin/upload-circular":
-            content_length = request.headers.get("content-length")
-            if content_length:
-                try:
-                    if int(content_length) > settings.max_admin_upload_request_bytes:
-                        response = JSONResponse(
-                            status_code = 413,
-                            content = {"detail": "Upload request exceeds the server limit."},
-                        )
-                        return self._secure_rejection_response(request, response)
-                except ValueError:
-                    response = JSONResponse(
-                        status_code = 400,
-                        content = {"detail": "Invalid Content-Length Header."},
-                    )
-                    return self._secure_rejection_response(request, response)
+    async def dispatch(self, request: Request, call_next):
 
         # Central_Line_of_Security --> Middleware_Section
         response = await call_next(request)
@@ -177,28 +224,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "max-age=31536000; includeSubDomains"
             )
 
-        return response
-    # ── [[ |> ]] ───────────────────────────────────────────────────
-
-    # ── [[ || ]] ───────────────────────────────────────────────────
-    # If_Middleware_Object_Rejects_Request_Before_`call_next()` --> Helper_Function
-    @staticmethod
-    def _secure_rejection_response(request: Request, response: JSONResponse) -> JSONResponse:
-        """Keep early request-size rejections covered by the normal headers."""
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = _content_security_policy(
-            request.url.path
-        )
-        response.headers["Permissions-Policy"] = (
-            "geolocation=(), microphone=(self), camera=()"
-        )
-        response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
-        if settings.environment == "production":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
         return response
     # ── [[ |> ]] ───────────────────────────────────────────────────
 
@@ -264,6 +289,7 @@ headers = settings.headers_list
 allow_credentials = origins != ["*"]
 
 # Adds_Security_MiddleWare
+app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS_Actual_Middleware --> Security_Section
@@ -290,7 +316,7 @@ app.include_router(chat.router, prefix = "/api/conversations", tags = ["Chat"])
 
 # Rate_Limit --> Exception_Handler
 @app.exception_handler(RateLimitExceeded)
-async def rate_limit_exceeded_handler(request, exc: RateLimitExceeded):
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code = 429,
         content = {"detail": "Too many requests. Please wait a moment before trying again."},
@@ -298,7 +324,7 @@ async def rate_limit_exceeded_handler(request, exc: RateLimitExceeded):
 
 # Unhandled --> Exception_Handler
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception):
     """Log detail server-side while returning a stable public error shape."""
     if settings.environment == "production":
         logger.error(
@@ -318,12 +344,13 @@ async def unhandled_exception_handler(request, exc: Exception):
 # ── [[ || ]] ───────────────────────────────────────────────────
 # ── HTTP_EXCEPTION_HANDLER_SECTION ───────────────────────────────────────────────────
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.get("/api/health", tags=["System"])
-def health():
+@limiter.limit("60/minute")
+def health(request: Request):
     if settings.environment == "production":
         return {"status": "ok", "version": "2.0.0"}
     return {
@@ -347,7 +374,8 @@ admin_auth_router = APIRouter(prefix="/api/admin/auth", tags=["Admin authenticat
 
 
 @admin_auth_router.get("/status")
-async def admin_auth_status(repo=Depends(get_repo)):
+@limiter.limit("20/minute")
+async def admin_auth_status(request: Request, repo=Depends(get_repo)):
     """Only indicates whether first-admin setup is needed; no account data leaks."""
     return {"setup_required": not await repo.admin_user_exists()}
 
@@ -395,7 +423,8 @@ async def admin_login(
 ):
     """Authenticate without revealing whether a username exists."""
     user = await repo.get_admin_user(credentials.username.lower())
-    if user is None or not verify_password(credentials.password, user.password_hash):
+    password_hash = user.password_hash if user is not None else _DUMMY_PASSWORD_HASH
+    if not verify_password(credentials.password, password_hash) or user is None:
         raise HTTPException(status_code=401, detail="Incorrect username or password.")
     return {"status": "ok"}
 

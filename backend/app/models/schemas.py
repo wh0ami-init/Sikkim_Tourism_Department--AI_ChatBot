@@ -250,7 +250,7 @@ class ChatRequest(BaseModel):
 
     @field_validator("message", mode="before")
     @classmethod
-    def sanitize_message(cls, v):
+    def sanitize_message(cls, v: object) -> object:
         """Sanitize user message to prevent injection attacks.
 
         Runs in mode="before" — i.e. BEFORE Pydantic checks min_length/
@@ -268,27 +268,6 @@ class ChatRequest(BaseModel):
 
         # Normalize Unicode (NFKC) to prevent homograph attacks
         v = unicodedata.normalize("NFKC", v)
-
-        # Detect common injection patterns (log warning but allow)
-        # The LLM can decide if the message is legitimate
-        injection_patterns = [
-            r"<script",
-            r"onclick\s*=",
-            r"onerror\s*=",
-            r"javascript:",
-            r"union\s+.*\s+select",
-            r"drop\s+table",
-            r"delete\s+from",
-            r"--\s*$",  # SQL comments
-        ]
-
-        if any(re.search(p, v, re.IGNORECASE) for p in injection_patterns):
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Potential injection pattern detected in message: {v[:50]}..."
-            )
 
         return v
 

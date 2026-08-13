@@ -3,6 +3,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 import pytest
+from uuid import uuid4
 
 from app.config import settings
 from app import startup
@@ -26,6 +27,31 @@ def test_clear_collection_removes_stale_points_without_recreating(monkeypatch):
 
         vectorstore.clear_collection(client)
         assert client.count(settings.qdrant_collection).count == 0
+    finally:
+        settings.qdrant_collection = original_collection
+
+
+def test_delete_points_except_prunes_only_records_missing_from_snapshot(monkeypatch):
+    client = QdrantClient(":memory:")
+    original_collection = settings.qdrant_collection
+    monkeypatch.setattr(settings, "qdrant_collection", "snapshot-prune-test")
+    monkeypatch.setattr(vectorstore, "get_embedding_dimension", lambda: 2)
+
+    try:
+        vectorstore.ensure_collection(client)
+        current_id, stale_id = str(uuid4()), str(uuid4())
+        client.upsert(
+            collection_name=settings.qdrant_collection,
+            points=[
+                PointStruct(id=current_id, vector=[1.0, 0.0]),
+                PointStruct(id=stale_id, vector=[0.0, 1.0]),
+            ],
+        )
+
+        vectorstore.delete_points_except(client, {current_id})
+
+        records, _ = client.scroll(settings.qdrant_collection, limit=10)
+        assert [str(record.id) for record in records] == [current_id]
     finally:
         settings.qdrant_collection = original_collection
 

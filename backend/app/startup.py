@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from asyncio import to_thread
+from asyncio import Lock, to_thread
 
 from langchain_core.documents import Document
 
@@ -24,25 +24,27 @@ from app.config import settings
 from app.database.base import BaseRepository
 from app.models.schemas import Destination
 from app.services.vectorstore import (
-    clear_collection,
+    delete_points_except,
+    ensure_collection,
     existing_point_count,
     get_qdrant_client,
     get_vectorstore,
 )
 
 logger = logging.getLogger(__name__)
+_vectorstore_sync_lock = Lock()
 
 
 def _replace_vectorstore_snapshot(documents: list[Document]) -> None:
-    """Perform blocking Qdrant and embedding work outside the event loop."""
+    """Write a complete snapshot before pruning obsolete points."""
     client = get_qdrant_client()
-    # Make syncs authoritative: upserts alone retain records that were deleted
-    # from the data source and let stale destinations leak into retrieval.
-    clear_collection(client)
-
+    ensure_collection(client)
     vectorstore = get_vectorstore()
-    ids = [str(uuid.uuid4()) for _ in documents]
+    ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"sikkim-destination:{document.metadata['id']}")) for document in documents]
     vectorstore.add_documents(documents=documents, ids=ids)
+    # Only remove records after all new embeddings have been accepted. This
+    # keeps the last known-good collection available during provider outages.
+    delete_points_except(client, set(ids))
 
 def _destination_to_document(dest: Destination) -> Document:
     """Build the text and metadata used for retrieval."""
@@ -122,7 +124,8 @@ async def populate_vectorstore(repo: BaseRepository, *, force: bool = False) -> 
     # The Qdrant client and embedding SDK are synchronous. Running this work in
     # a worker thread keeps requests responsive while an admin-triggered re-sync
     # is embedding the complete destination catalog.
-    await to_thread(_replace_vectorstore_snapshot, documents)
+    async with _vectorstore_sync_lock:
+        await to_thread(_replace_vectorstore_snapshot, documents)
 
     logger.info(
         "Vector store: indexed %d destinations into '%s' (%s)",

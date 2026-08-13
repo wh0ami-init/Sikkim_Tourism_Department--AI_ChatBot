@@ -132,8 +132,8 @@
   /* ── Chat surface tokens — read live by useChatTheme() in chat-theme.ts ──
      Glassmorphism build: surfaces are translucent rgba() so backdrop-blur
      classes on the consuming elements actually show frosted glass. ────── */
-  --chat-bg: rgba(242, 248, 245, 0.65);
-  --chat-bg-deep: rgba(220, 235, 229, 0.7);
+  --chat-bg: rgba(241, 248, 246, 0.68);
+  --chat-bg-deep: rgba(218, 235, 228, 0.74);
   --chat-surface: rgba(255, 255, 255, 0.7);
   --chat-border: rgba(16, 80, 60, 0.12);
   --chat-border-strong: rgba(16, 80, 60, 0.22);
@@ -141,11 +141,11 @@
   --chat-ink-soft: #38564E;
   --chat-ink-muted: #5E7A71;
   --chat-ink-faint: #85A096;
-  --chat-pine: #16795B;
-  --chat-pine-alt: #21A57E;
+  --chat-pine: #126B52;
+  --chat-pine-alt: #168060;
   --chat-pine-on: #FFFFFF;
-  --chat-accent: #C6892A;
-  --chat-accent-soft: rgba(198, 137, 42, 0.18);
+  --chat-accent: #A95C16;
+  --chat-accent-soft: rgba(169, 92, 22, 0.16);
   --chat-assistant-bubble: rgba(255, 255, 255, 0.65);
   --chat-launcher-fg: #FFFFFF;
   --chat-launcher-surface: rgba(255, 255, 255, 0.75);
@@ -185,26 +185,26 @@
   --ring: 160 62% 42%;
 
   /* ── Chat surface tokens (dark) — mirrors the DARK palette in chat-theme.ts ── */
-  --chat-bg: rgba(9, 16, 14, 0.65);
-  --chat-bg-deep: rgba(18, 30, 27, 0.75);
-  --chat-surface: rgba(22, 35, 31, 0.65);
-  --chat-border: rgba(255, 255, 255, 0.1);
-  --chat-border-strong: rgba(255, 255, 255, 0.18);
-  --chat-ink: #EAF4F0;
-  --chat-ink-soft: #B2C6BE;
-  --chat-ink-muted: #889E95;
-  --chat-ink-faint: #637870;
-  --chat-pine: #28AE85;
-  --chat-pine-alt: #4FD2AC;
+  --chat-bg: rgba(8, 20, 23, 0.72);
+  --chat-bg-deep: rgba(14, 34, 36, 0.8);
+  --chat-surface: rgba(19, 43, 43, 0.72);
+  --chat-border: rgba(173, 224, 213, 0.13);
+  --chat-border-strong: rgba(173, 224, 213, 0.24);
+  --chat-ink: #EDF8F4;
+  --chat-ink-soft: #BED6CE;
+  --chat-ink-muted: #91AEA4;
+  --chat-ink-faint: #68857C;
+  --chat-pine: #0B6758;
+  --chat-pine-alt: #137966;
   --chat-pine-on: #FFFFFF;
 
-  --chat-accent: #F2B84B;
-  --chat-accent-soft: rgba(242, 184, 75, 0.16);
-  --chat-assistant-bubble: rgba(255, 255, 255, 0.06);
+  --chat-accent: #F7C65B;
+  --chat-accent-soft: rgba(247, 198, 91, 0.17);
+  --chat-assistant-bubble: rgba(209, 240, 230, 0.08);
   --chat-launcher-fg: #FFFFFF;
-  --chat-launcher-surface: rgba(22, 31, 29, 0.7);
-  --chat-launcher-hint-bg: rgba(22, 31, 29, 0.72);
-  --chat-launcher-hint-ink: #E8F0EC;
+  --chat-launcher-surface: rgba(16, 39, 40, 0.78);
+  --chat-launcher-hint-bg: rgba(16, 39, 40, 0.82);
+  --chat-launcher-hint-ink: #EDF8F4;
 }
 
 @layer base {
