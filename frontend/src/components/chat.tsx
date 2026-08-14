@@ -138,7 +138,7 @@ function AssistantMessage({
     const theme = useChatTheme();
     return (
         <div
-            className={`chat-markdown min-w-0 max-w-full overflow-x-hidden text-[0.95rem] leading-[1.6] space-y-2.5 break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${
+            className={`chat-markdown min-w-0 max-w-full text-[0.95rem] leading-[1.6] space-y-2.5 break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${
                 streaming ? "chat-streaming-cursor" : ""
             }`}
         >
@@ -226,10 +226,13 @@ function AssistantMessage({
                     ),
 table: ({ children }) => (
     <div
-        className="my-2 -mx-1 max-w-full overflow-x-auto rounded-md border overscroll-x-contain"
+        className="chat-table my-2 w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border touch-pan-x"
         style={{ borderColor: theme.border, WebkitOverflowScrolling: "touch" }}
+        role="region"
+        aria-label="Scrollable response table"
+        tabIndex={0}
     >
-        <table className="w-max min-w-full text-sm border-collapse">
+        <table className="w-max min-w-[34rem] text-sm border-collapse">
             {children}
         </table>
     </div>
@@ -583,7 +586,7 @@ function Bubble({
                 </motion.div>
             )}
 
-                        <div className={`min-w-0 overflow-hidden ${isUser ? "max-w-[85%] sm:max-w-[78%]" : "max-w-[92%] sm:max-w-[88%]"}`}>
+                        <div className={`min-w-0 ${isUser ? "max-w-[85%] sm:max-w-[78%]" : "max-w-[92%] sm:max-w-[88%]"}`}>
                 {!isUser && showTime && (
                     <div
                         className="mb-1 flex items-center gap-2 text-[0.66rem] font-medium tracking-wide"
@@ -1185,13 +1188,13 @@ const res = await fetchConversation(currentConvId, currentAccessToken);
 
     return (
         <div
-            className="relative flex h-full min-h-0 flex-col backdrop-blur-xl backdrop-saturate-150"
+            className="chat-conversation relative flex h-full min-h-0 flex-col backdrop-blur-xl backdrop-saturate-150"
             style={{ background: theme.bg }}
             ref={scrollRef}
         >
             {/* Fixed colour wash behind the conversation */}
             <div
-                className="pointer-events-none absolute inset-0 -z-10"
+                className="chat-aurora pointer-events-none absolute inset-0 -z-10"
                 style={{
                     background: `
             radial-gradient(65% 50% at 100% 0%, ${withAlpha(theme.pine, 0.16)} 0%, transparent 72%),

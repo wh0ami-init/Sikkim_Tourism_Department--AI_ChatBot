@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # Common English words that would otherwise pass search_travel_agencies()'s
 # `len(t) > 2` token filter and match almost every row in the table (e.g.
-# "the"), starving out the unordered/unindexed candidate_pool LIMIT before
+# "the"), starving out the unordered candidate-pool limit before
 # a genuinely matching agency is ever scored. See search_travel_agencies()
 # for the full explanation.
 #

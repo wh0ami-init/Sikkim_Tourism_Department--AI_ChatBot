@@ -1,58 +1,1008 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Software Requirements Specification for the Sikkim Tourism Assistant.">
-<title>Sikkim Tourism Assistant — SRS</title>
-<style>
-:root{--ink:#14312b;--muted:#58736c;--paper:#f4f6f1;--panel:#fffefa;--line:#d7e0d9;--jade:#126b52;--jade2:#168060;--gold:#a95c16;--night:#0d2824}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Inter,ui-sans-serif,system-ui,sans-serif}.progress{position:fixed;z-index:20;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--gold),var(--jade2))}.hero{color:#edf9f4;background:radial-gradient(circle at 82% 10%,#25856999,transparent 30rem),radial-gradient(circle at 8% 100%,#d8983c55,transparent 29rem),linear-gradient(135deg,#091d1b,#154237 58%,#0e2a27);overflow:hidden}.shell{width:min(1140px,calc(100% - 40px));margin:auto}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:24px 0;position:relative;z-index:1}.brand{display:flex;align-items:center;gap:11px;font-size:.76rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.brand img{width:42px;height:42px;object-fit:contain;border-radius:50%;background:#fff;padding:3px}button{cursor:pointer;border:1px solid #ffffff44;border-radius:99px;background:#ffffff12;color:inherit;padding:9px 14px;font:700 .8rem inherit}button:hover{background:#ffffff25}.intro{max-width:780px;padding:90px 0 112px;position:relative;z-index:1}.eyebrow,.kicker{margin:0 0 13px;color:#f3c76e;font-size:.74rem;font-weight:800;letter-spacing:.17em;text-transform:uppercase}h1,h2{font-family:Georgia,"Times New Roman",serif;letter-spacing:-.045em}h1{margin:0;font-size:clamp(3rem,7vw,5.7rem);line-height:.96}.intro>p:last-of-type{max-width:660px;margin:25px 0 0;color:#c9dfd6;font-size:1.12rem}.meta{display:flex;flex-wrap:wrap;gap:9px;margin-top:29px}.meta span{padding:6px 10px;border:1px solid #ffffff2e;border-radius:6px;background:#ffffff0c;color:#d8e9e2;font-size:.79rem}.layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:48px;padding:52px 0 80px}nav{position:sticky;top:20px;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fffefaDD;box-shadow:0 12px 31px #14312b0b;backdrop-filter:blur(12px)}nav p{margin:0 0 8px;color:var(--muted);font-size:.71rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}nav a{display:block;padding:7px 8px;border-radius:7px;color:var(--muted);font-size:.85rem;text-decoration:none}nav a:hover,nav a.active{background:#eaf4ee;color:var(--jade);font-weight:800}section{scroll-margin-top:24px;margin-bottom:25px;padding:30px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 10px 28px #14312b09}section:first-child{background:linear-gradient(135deg,#fffefa,#edf7f1)}h2{margin:0 0 10px;color:#153c32;font-size:1.95rem}.kicker{color:var(--gold);margin-bottom:7px}h3{margin:22px 0 7px;color:var(--jade);font-size:1rem}p{margin:0 0 12px}ul,ol{margin:9px 0 0;padding-left:21px}li+li{margin-top:5px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:17px}.card{padding:16px;border:1px solid #dce7df;border-radius:12px;background:#fff}.card strong{display:block;margin-bottom:4px;color:var(--jade)}.card p{margin:0;color:var(--muted);font-size:.9rem}table{width:100%;border-collapse:collapse;margin-top:15px;font-size:.9rem}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--jade);font-size:.7rem;letter-spacing:.09em;text-transform:uppercase}tr:last-child td{border:0}code{padding:2px 5px;border-radius:4px;background:#eaf3ed;color:#10503f;font-size:.88em}pre{overflow:auto;padding:16px;border-radius:11px;background:#102e29;color:#e5f4ed;font:13px/1.6 ui-monospace,SFMono-Regular,monospace}.note{margin-top:16px;padding:15px 17px;border-left:4px solid var(--gold);border-radius:0 9px 9px 0;background:#fff5e4;color:#684518}.checks{list-style:none;padding:0}.checks li{position:relative;padding:8px 0 8px 28px;border-bottom:1px solid var(--line)}.checks li:before{content:"□";position:absolute;left:1px;color:var(--jade);font-size:1.2rem}.footer{padding:35px 0 52px;background:var(--night);color:#c7dcd3}.footer .shell{display:flex;justify-content:space-between;gap:25px;align-items:flex-end}.footer strong{display:block;color:#fff;font:1.2rem Georgia,serif}.footer p{margin:0;font-size:.87rem}[data-reveal]{opacity:0;transform:translateY(16px);transition:.55s ease}[data-reveal].visible{opacity:1;transform:none}@media(max-width:850px){.layout{grid-template-columns:1fr;gap:20px}nav{position:relative;top:auto;display:flex;overflow:auto;padding:9px;white-space:nowrap}nav p{display:none}nav a{flex:0 0 auto}.grid{grid-template-columns:1fr}}@media(max-width:560px){.shell{width:min(100% - 28px,1140px)}.intro{padding:68px 0 86px}section{padding:23px 18px}.brand{font-size:.65rem}.footer .shell{display:block}.footer p{margin-top:10px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition-duration:.01ms!important}[data-reveal]{opacity:1;transform:none}}@media print{.progress,nav,.top button{display:none}body{background:#fff;font-size:11pt}.hero{color:#111;background:#fff;border-bottom:2px solid var(--jade)}.intro{padding:30px 0}.intro>p:last-of-type,.meta span{color:#333}.meta span{border-color:#bbb}.layout{display:block;padding:22px 0}section{break-inside:avoid;box-shadow:none;border-color:#aaa}.footer{background:#fff;color:#111;border-top:1px solid #aaa}.footer strong{color:#111}}
-</style>
-<style>
-/* Night-alpine presentation layer: kept separate from the print rules above. */
-:root{--ink:#e7f1ed;--muted:#abc2b9;--paper:#071613;--panel:rgba(13,37,33,.82);--line:rgba(183,224,208,.16);--jade:#6bd0ad;--jade2:#31aa84;--gold:#f1bd60;--night:#06110f}
-body{background:radial-gradient(circle at 12% 10%,#1c604e66,transparent 27rem),radial-gradient(circle at 87% 39%,#8060292c,transparent 28rem),#071613;color:var(--ink)}
-.hero{min-height:640px;background:radial-gradient(circle at 76% 11%,#60dca24a,transparent 26rem),radial-gradient(circle at 14% 19%,#f5c56321,transparent 22rem),linear-gradient(160deg,#071411 0%,#103d34 58%,#0b2625 100%)}
-.hero:before{content:"";position:absolute;inset:auto -8% -2px -8%;height:310px;background:linear-gradient(165deg,transparent 0 24%,#173e38 24.2% 51%,transparent 51.2%) 0 0/30% 100%,linear-gradient(198deg,transparent 0 29%,#0d2d2a 29.2% 60%,transparent 60.2%) 18% 0/38% 100%,linear-gradient(158deg,transparent 0 31%,#0b2422 31.2% 64%,transparent 64.2%) 46% 0/42% 100%,linear-gradient(203deg,transparent 0 30%,#071917 30.2% 63%,transparent 63.2%) 74% 0/36% 100%;opacity:.95;pointer-events:none}
-.hero:after{content:"";position:absolute;inset:auto 0 0;height:175px;background:linear-gradient(174deg,transparent 0 42%,#071613 42.5% 100%);opacity:.95;pointer-events:none}
-.top,.intro{z-index:2}.layout{position:relative}.layout:before{content:"";position:fixed;z-index:-1;inset:0;background:linear-gradient(90deg,transparent,rgba(73,161,132,.025),transparent);pointer-events:none}
-nav{background:rgba(9,29,26,.78);border-color:var(--line);box-shadow:0 16px 40px #0007;color:var(--ink)}nav a{color:var(--muted)}nav a:hover,nav a.active{background:rgba(79,188,151,.13);color:#a4efd1}
-section{background:linear-gradient(145deg,rgba(19,48,43,.88),rgba(8,28,25,.84));border-color:var(--line);box-shadow:0 18px 42px #0004;backdrop-filter:blur(16px)}section:first-child{background:linear-gradient(135deg,rgba(25,69,58,.88),rgba(11,37,33,.92))}h2{color:#ecfaf4}h3{color:#83deb9}.kicker{color:var(--gold)}.card{background:rgba(234,255,246,.055);border-color:rgba(188,233,214,.14)}.card strong,th{color:#86dfbb}.card p{color:#b6cbc3}th,td{border-color:var(--line)}code{background:#1c4b40;color:#bdf0dc}pre{background:#061a18;border:1px solid #2d6b5c;color:#e1f7ec}.note{background:rgba(130,91,31,.20);color:#f1d8a4}.checks li{border-color:var(--line)}.checks li:before{color:#87ddbc}.footer{background:#04100e;border-top:1px solid var(--line)}
-@media print{body{color:#111}.hero:before,.hero:after,.layout:before{display:none}section,section:first-child{background:#fff}.card{background:#fff}h2{color:#153c32}.card p,nav a{color:#333}.note{background:#fff5e4}.hero{background:#fff}.footer{background:#fff}}
-</style>
-<style>
-/* Responsive composition: phone first, with no desktop layout forced below 900px. */
-body{overflow-x:hidden}.top>div:last-child{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.intro{padding-bottom:72px}.hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:690px;margin-top:34px}.hero-stat{padding:13px 14px;border:1px solid rgba(225,255,242,.18);border-radius:14px;background:rgba(4,20,17,.27);backdrop-filter:blur(11px)}.hero-stat b{display:block;color:#f5c86d;font:1.3rem Georgia,serif}.hero-stat span{display:block;margin-top:2px;color:#d1e6dc;font-size:.73rem;line-height:1.35}.layout{grid-template-columns:minmax(190px,235px) minmax(0,1fr)}section{min-width:0}table{display:block;min-width:600px;overflow-x:auto}section:has(pre){overflow-x:auto}.footer .shell{flex-wrap:wrap}
-@media(max-width:900px){.shell{width:min(100% - 32px,760px)}.hero{min-height:unset}.top{align-items:flex-start}.layout{grid-template-columns:1fr;padding-top:27px;gap:18px}nav{position:relative;top:auto;display:flex;gap:4px;overflow-x:auto;overscroll-behavior-x:contain;padding:9px;white-space:nowrap;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav p{display:none}nav a{flex:0 0 auto;padding:9px 11px}.intro{padding:58px 0 70px}section{padding:25px 22px}.footer .shell{align-items:flex-start}}
-@media(max-width:620px){.shell{width:calc(100% - 24px)}.top{padding:16px 0;gap:14px}.brand{max-width:220px;font-size:.61rem;line-height:1.35}.brand img{width:36px;height:36px}.top>div:last-child{width:100%;justify-content:flex-start}.top button{min-height:40px;padding:9px 13px}.intro{padding:43px 0 56px}.intro>p:last-of-type{font-size:1rem}.meta{margin-top:22px}.meta span{font-size:.72rem}.hero-stats{grid-template-columns:1fr;gap:8px;margin-top:26px}.hero-stat{display:flex;align-items:baseline;gap:9px;padding:11px 13px}.hero-stat span{margin:0}.layout{padding-bottom:45px}section{padding:21px 17px;border-radius:15px}h2{font-size:1.58rem;line-height:1.08}h3{margin-top:19px}.grid{grid-template-columns:1fr;gap:10px}.card{padding:14px}table{font-size:.82rem}th,td{padding:9px 8px}pre{margin-inline:0;padding:13px;font-size:11px}.note{padding:13px 14px}.footer{padding:27px 0 34px}.footer .shell{display:block}.footer p{margin-top:10px}}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Software Requirements Specification for the Sikkim Tourism Assistant.">
+    <title>Sikkim Tourism Assistant — SRS</title>
+    <style>
+        :root {
+            --ink: #14312b;
+            --muted: #58736c;
+            --paper: #f4f6f1;
+            --panel: #fffefa;
+            --line: #d7e0d9;
+            --jade: #126b52;
+            --jade2: #168060;
+            --gold: #a95c16;
+            --night: #0d2824
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font: 16px/1.65 Inter, ui-sans-serif, system-ui, sans-serif
+        }
+
+        .progress {
+            position: fixed;
+            z-index: 20;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0;
+            background: linear-gradient(90deg, var(--gold), var(--jade2))
+        }
+
+        .hero {
+            color: #edf9f4;
+            background: radial-gradient(circle at 82% 10%, #25856999, transparent 30rem), radial-gradient(circle at 8% 100%, #d8983c55, transparent 29rem), linear-gradient(135deg, #091d1b, #154237 58%, #0e2a27);
+            overflow: hidden
+        }
+
+        .shell {
+            width: min(1140px, calc(100% - 40px));
+            margin: auto
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: center;
+            padding: 24px 0;
+            position: relative;
+            z-index: 1
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-size: .76rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase
+        }
+
+        .brand img {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            border-radius: 50%;
+            background: #fff;
+            padding: 3px
+        }
+
+        button {
+            cursor: pointer;
+            border: 1px solid #ffffff44;
+            border-radius: 99px;
+            background: #ffffff12;
+            color: inherit;
+            padding: 9px 14px;
+            font: 700 .8rem inherit
+        }
+
+        button:hover {
+            background: #ffffff25
+        }
+
+        .intro {
+            max-width: 780px;
+            padding: 90px 0 112px;
+            position: relative;
+            z-index: 1
+        }
+
+        .eyebrow,
+        .kicker {
+            margin: 0 0 13px;
+            color: #f3c76e;
+            font-size: .74rem;
+            font-weight: 800;
+            letter-spacing: .17em;
+            text-transform: uppercase
+        }
+
+        h1,
+        h2 {
+            font-family: Georgia, "Times New Roman", serif;
+            letter-spacing: -.045em
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(3rem, 7vw, 5.7rem);
+            line-height: .96
+        }
+
+        .intro>p:last-of-type {
+            max-width: 660px;
+            margin: 25px 0 0;
+            color: #c9dfd6;
+            font-size: 1.12rem
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-top: 29px
+        }
+
+        .meta span {
+            padding: 6px 10px;
+            border: 1px solid #ffffff2e;
+            border-radius: 6px;
+            background: #ffffff0c;
+            color: #d8e9e2;
+            font-size: .79rem
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 235px minmax(0, 1fr);
+            gap: 48px;
+            padding: 52px 0 80px
+        }
+
+        nav {
+            position: sticky;
+            top: 20px;
+            padding: 15px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fffefaDD;
+            box-shadow: 0 12px 31px #14312b0b;
+            backdrop-filter: blur(12px)
+        }
+
+        nav p {
+            margin: 0 0 8px;
+            color: var(--muted);
+            font-size: .71rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase
+        }
+
+        nav a {
+            display: block;
+            padding: 7px 8px;
+            border-radius: 7px;
+            color: var(--muted);
+            font-size: .85rem;
+            text-decoration: none
+        }
+
+        nav a:hover,
+        nav a.active {
+            background: #eaf4ee;
+            color: var(--jade);
+            font-weight: 800
+        }
+
+        section {
+            scroll-margin-top: 24px;
+            margin-bottom: 25px;
+            padding: 30px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: var(--panel);
+            box-shadow: 0 10px 28px #14312b09
+        }
+
+        section:first-child {
+            background: linear-gradient(135deg, #fffefa, #edf7f1)
+        }
+
+        h2 {
+            margin: 0 0 10px;
+            color: #153c32;
+            font-size: 1.95rem
+        }
+
+        .kicker {
+            color: var(--gold);
+            margin-bottom: 7px
+        }
+
+        h3 {
+            margin: 22px 0 7px;
+            color: var(--jade);
+            font-size: 1rem
+        }
+
+        p {
+            margin: 0 0 12px
+        }
+
+        ul,
+        ol {
+            margin: 9px 0 0;
+            padding-left: 21px
+        }
+
+        li+li {
+            margin-top: 5px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 13px;
+            margin-top: 17px
+        }
+
+        .card {
+            padding: 16px;
+            border: 1px solid #dce7df;
+            border-radius: 12px;
+            background: #fff
+        }
+
+        .card strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--jade)
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: .9rem
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: .9rem
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: top
+        }
+
+        th {
+            color: var(--jade);
+            font-size: .7rem;
+            letter-spacing: .09em;
+            text-transform: uppercase
+        }
+
+        tr:last-child td {
+            border: 0
+        }
+
+        code {
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: #eaf3ed;
+            color: #10503f;
+            font-size: .88em
+        }
+
+        pre {
+            overflow: auto;
+            padding: 16px;
+            border-radius: 11px;
+            background: #102e29;
+            color: #e5f4ed;
+            font: 13px/1.6 ui-monospace, SFMono-Regular, monospace
+        }
+
+        .note {
+            margin-top: 16px;
+            padding: 15px 17px;
+            border-left: 4px solid var(--gold);
+            border-radius: 0 9px 9px 0;
+            background: #fff5e4;
+            color: #684518
+        }
+
+        .checks {
+            list-style: none;
+            padding: 0
+        }
+
+        .checks li {
+            position: relative;
+            padding: 8px 0 8px 28px;
+            border-bottom: 1px solid var(--line)
+        }
+
+        .checks li:before {
+            content: "□";
+            position: absolute;
+            left: 1px;
+            color: var(--jade);
+            font-size: 1.2rem
+        }
+
+        .footer {
+            padding: 35px 0 52px;
+            background: var(--night);
+            color: #c7dcd3
+        }
+
+        .footer .shell {
+            display: flex;
+            justify-content: space-between;
+            gap: 25px;
+            align-items: flex-end
+        }
+
+        .footer strong {
+            display: block;
+            color: #fff;
+            font: 1.2rem Georgia, serif
+        }
+
+        .footer p {
+            margin: 0;
+            font-size: .87rem
+        }
+
+        [data-reveal] {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: .55s ease
+        }
+
+        [data-reveal].visible {
+            opacity: 1;
+            transform: none
+        }
+
+        @media(max-width:850px) {
+            .layout {
+                grid-template-columns: 1fr;
+                gap: 20px
+            }
+
+            nav {
+                position: relative;
+                top: auto;
+                display: flex;
+                overflow: auto;
+                padding: 9px;
+                white-space: nowrap
+            }
+
+            nav p {
+                display: none
+            }
+
+            nav a {
+                flex: 0 0 auto
+            }
+
+            .grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        @media(max-width:560px) {
+            .shell {
+                width: min(100% - 28px, 1140px)
+            }
+
+            .intro {
+                padding: 68px 0 86px
+            }
+
+            section {
+                padding: 23px 18px
+            }
+
+            .brand {
+                font-size: .65rem
+            }
+
+            .footer .shell {
+                display: block
+            }
+
+            .footer p {
+                margin-top: 10px
+            }
+        }
+
+        @media(prefers-reduced-motion:reduce) {
+            html {
+                scroll-behavior: auto
+            }
+
+            *,
+            *:before,
+            *:after {
+                transition-duration: .01ms !important
+            }
+
+            [data-reveal] {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        @media print {
+
+            .progress,
+            nav,
+            .top button {
+                display: none
+            }
+
+            body {
+                background: #fff;
+                font-size: 11pt
+            }
+
+            .hero {
+                color: #111;
+                background: #fff;
+                border-bottom: 2px solid var(--jade)
+            }
+
+            .intro {
+                padding: 30px 0
+            }
+
+            .intro>p:last-of-type,
+            .meta span {
+                color: #333
+            }
+
+            .meta span {
+                border-color: #bbb
+            }
+
+            .layout {
+                display: block;
+                padding: 22px 0
+            }
+
+            section {
+                break-inside: avoid;
+                box-shadow: none;
+                border-color: #aaa
+            }
+
+            .footer {
+                background: #fff;
+                color: #111;
+                border-top: 1px solid #aaa
+            }
+
+            .footer strong {
+                color: #111
+            }
+        }
+    </style>
+    <style>
+        /* Night-alpine presentation layer: kept separate from the print rules above. */
+        :root {
+            --ink: #e7f1ed;
+            --muted: #abc2b9;
+            --paper: #071613;
+            --panel: rgba(13, 37, 33, .82);
+            --line: rgba(183, 224, 208, .16);
+            --jade: #6bd0ad;
+            --jade2: #31aa84;
+            --gold: #f1bd60;
+            --night: #06110f
+        }
+
+        body {
+            background: radial-gradient(circle at 12% 10%, #1c604e66, transparent 27rem), radial-gradient(circle at 87% 39%, #8060292c, transparent 28rem), #071613;
+            color: var(--ink)
+        }
+
+        .hero {
+            min-height: 640px;
+            background: radial-gradient(circle at 76% 11%, #60dca24a, transparent 26rem), radial-gradient(circle at 14% 19%, #f5c56321, transparent 22rem), linear-gradient(160deg, #071411 0%, #103d34 58%, #0b2625 100%)
+        }
+
+        .hero:before {
+            content: "";
+            position: absolute;
+            inset: auto -8% -2px -8%;
+            height: 310px;
+            background: linear-gradient(165deg, transparent 0 24%, #173e38 24.2% 51%, transparent 51.2%) 0 0/30% 100%, linear-gradient(198deg, transparent 0 29%, #0d2d2a 29.2% 60%, transparent 60.2%) 18% 0/38% 100%, linear-gradient(158deg, transparent 0 31%, #0b2422 31.2% 64%, transparent 64.2%) 46% 0/42% 100%, linear-gradient(203deg, transparent 0 30%, #071917 30.2% 63%, transparent 63.2%) 74% 0/36% 100%;
+            opacity: .95;
+            pointer-events: none
+        }
+
+        .hero:after {
+            content: "";
+            position: absolute;
+            inset: auto 0 0;
+            height: 175px;
+            background: linear-gradient(174deg, transparent 0 42%, #071613 42.5% 100%);
+            opacity: .95;
+            pointer-events: none
+        }
+
+        .top,
+        .intro {
+            z-index: 2
+        }
+
+        .layout {
+            position: relative
+        }
+
+        .layout:before {
+            content: "";
+            position: fixed;
+            z-index: -1;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(73, 161, 132, .025), transparent);
+            pointer-events: none
+        }
+
+        nav {
+            background: rgba(9, 29, 26, .78);
+            border-color: var(--line);
+            box-shadow: 0 16px 40px #0007;
+            color: var(--ink)
+        }
+
+        nav a {
+            color: var(--muted)
+        }
+
+        nav a:hover,
+        nav a.active {
+            background: rgba(79, 188, 151, .13);
+            color: #a4efd1
+        }
+
+        section {
+            background: linear-gradient(145deg, rgba(19, 48, 43, .88), rgba(8, 28, 25, .84));
+            border-color: var(--line);
+            box-shadow: 0 18px 42px #0004;
+            backdrop-filter: blur(16px)
+        }
+
+        section:first-child {
+            background: linear-gradient(135deg, rgba(25, 69, 58, .88), rgba(11, 37, 33, .92))
+        }
+
+        h2 {
+            color: #ecfaf4
+        }
+
+        h3 {
+            color: #83deb9
+        }
+
+        .kicker {
+            color: var(--gold)
+        }
+
+        .card {
+            background: rgba(234, 255, 246, .055);
+            border-color: rgba(188, 233, 214, .14)
+        }
+
+        .card strong,
+        th {
+            color: #86dfbb
+        }
+
+        .card p {
+            color: #b6cbc3
+        }
+
+        th,
+        td {
+            border-color: var(--line)
+        }
+
+        code {
+            background: #1c4b40;
+            color: #bdf0dc
+        }
+
+        pre {
+            background: #061a18;
+            border: 1px solid #2d6b5c;
+            color: #e1f7ec
+        }
+
+        .note {
+            background: rgba(130, 91, 31, .20);
+            color: #f1d8a4
+        }
+
+        .checks li {
+            border-color: var(--line)
+        }
+
+        .checks li:before {
+            color: #87ddbc
+        }
+
+        .footer {
+            background: #04100e;
+            border-top: 1px solid var(--line)
+        }
+
+        @media print {
+            body {
+                color: #111
+            }
+
+            .hero:before,
+            .hero:after,
+            .layout:before {
+                display: none
+            }
+
+            section,
+            section:first-child {
+                background: #fff
+            }
+
+            .card {
+                background: #fff
+            }
+
+            h2 {
+                color: #153c32
+            }
+
+            .card p,
+            nav a {
+                color: #333
+            }
+
+            .note {
+                background: #fff5e4
+            }
+
+            .hero {
+                background: #fff
+            }
+
+            .footer {
+                background: #fff
+            }
+        }
+    </style>
+    <style>
+        /* Responsive composition: phone first, with no desktop layout forced below 900px. */
+        body {
+            overflow-x: hidden
+        }
+
+        .top>div:last-child {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px
+        }
+
+        .intro {
+            padding-bottom: 72px
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            max-width: 690px;
+            margin-top: 34px
+        }
+
+        .hero-stat {
+            padding: 13px 14px;
+            border: 1px solid rgba(225, 255, 242, .18);
+            border-radius: 14px;
+            background: rgba(4, 20, 17, .27);
+            backdrop-filter: blur(11px)
+        }
+
+        .hero-stat b {
+            display: block;
+            color: #f5c86d;
+            font: 1.3rem Georgia, serif
+        }
+
+        .hero-stat span {
+            display: block;
+            margin-top: 2px;
+            color: #d1e6dc;
+            font-size: .73rem;
+            line-height: 1.35
+        }
+
+        .layout {
+            grid-template-columns: minmax(190px, 235px) minmax(0, 1fr)
+        }
+
+        section {
+            min-width: 0
+        }
+
+        table {
+            display: block;
+            min-width: 600px;
+            overflow-x: auto
+        }
+
+        section:has(pre) {
+            overflow-x: auto
+        }
+
+        .footer .shell {
+            flex-wrap: wrap
+        }
+
+        @media(max-width:900px) {
+            .shell {
+                width: min(100% - 32px, 760px)
+            }
+
+            .hero {
+                min-height: unset
+            }
+
+            .top {
+                align-items: flex-start
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+                padding-top: 27px;
+                gap: 18px
+            }
+
+            nav {
+                position: relative;
+                top: auto;
+                display: flex;
+                gap: 4px;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                padding: 9px;
+                white-space: nowrap;
+                scrollbar-width: none
+            }
+
+            nav::-webkit-scrollbar {
+                display: none
+            }
+
+            nav p {
+                display: none
+            }
+
+            nav a {
+                flex: 0 0 auto;
+                padding: 9px 11px
+            }
+
+            .intro {
+                padding: 58px 0 70px
+            }
+
+            section {
+                padding: 25px 22px
+            }
+
+            .footer .shell {
+                align-items: flex-start
+            }
+        }
+
+        @media(max-width:620px) {
+            .shell {
+                width: calc(100% - 24px)
+            }
+
+            .top {
+                padding: 16px 0;
+                gap: 14px
+            }
+
+            .brand {
+                max-width: 220px;
+                font-size: .61rem;
+                line-height: 1.35
+            }
+
+            .brand img {
+                width: 36px;
+                height: 36px
+            }
+
+            .top>div:last-child {
+                width: 100%;
+                justify-content: flex-start
+            }
+
+            .top button {
+                min-height: 40px;
+                padding: 9px 13px
+            }
+
+            .intro {
+                padding: 43px 0 56px
+            }
+
+            .intro>p:last-of-type {
+                font-size: 1rem
+            }
+
+            .meta {
+                margin-top: 22px
+            }
+
+            .meta span {
+                font-size: .72rem
+            }
+
+            .hero-stats {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                margin-top: 26px
+            }
+
+            .hero-stat {
+                display: flex;
+                align-items: baseline;
+                gap: 9px;
+                padding: 11px 13px
+            }
+
+            .hero-stat span {
+                margin: 0
+            }
+
+            .layout {
+                padding-bottom: 45px
+            }
+
+            section {
+                padding: 21px 17px;
+                border-radius: 15px
+            }
+
+            h2 {
+                font-size: 1.58rem;
+                line-height: 1.08
+            }
+
+            h3 {
+                margin-top: 19px
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 10px
+            }
+
+            .card {
+                padding: 14px
+            }
+
+            table {
+                font-size: .82rem
+            }
+
+            th,
+            td {
+                padding: 9px 8px
+            }
+
+            pre {
+                margin-inline: 0;
+                padding: 13px;
+                font-size: 11px
+            }
+
+            .note {
+                padding: 13px 14px
+            }
+
+            .footer {
+                padding: 27px 0 34px
+            }
+
+            .footer .shell {
+                display: block
+            }
+
+            .footer p {
+                margin-top: 10px
+            }
+        }
+    </style>
 </head>
+
 <body>
 <div class="progress" id="progress"></div>
-<header class="hero"><div class="shell"><div class="top"><div class="brand"><img src="../frontend/public/images/govt-of-sikkim-logo.png" alt="Government of Sikkim emblem">Tourism &amp; Civil Aviation Department</div><div><button id="print" type="button">Print / Save PDF</button><button id="home" type="button">Top</button></div></div><div class="intro"><p class="eyebrow">Software Requirements Specification</p><h1>Sikkim Tourism Assistant</h1><p>A Department-managed visitor information service bringing together verified tourism records, official advisories, and carefully constrained AI assistance.</p><div class="meta"><span>Version 1.1</span><span>13 August 2026</span><span>Department handover candidate</span></div><div class="hero-stats" aria-label="Project handover summary"><div class="hero-stat"><b>68</b><span>backend tests passing</span></div><div class="hero-stat"><b>Vercel + Railway</b><span>deployed application stack</span></div><div class="hero-stat"><b>Department-led</b><span>final domain and operations</span></div></div></div></div></header>
-<div class="shell layout"><nav id="nav" aria-label="Document sections"></nav><main id="content"></main></div>
-<footer class="footer"><div class="shell"><div><strong>Sikkim Tourism Assistant</strong><p>Technical handover documentation for the Tourism &amp; Civil Aviation Department, Government of Sikkim.</p></div><p>Prepared by Team Nexus · ICFAI University Sikkim</p></div></footer>
+<header class="hero">
+    <div class="shell">
+        <div class="top">
+            <div class="brand"><img src="../frontend/public/images/govt-of-sikkim-logo.png"
+                                    alt="Government of Sikkim emblem">Tourism &amp; Civil Aviation Department
+            </div>
+            <div>
+                <button id="print" type="button">Print / Save PDF</button>
+                <button id="home"
+                        type="button">Top
+                </button>
+            </div>
+        </div>
+        <div class="intro">
+            <p class="eyebrow">Software Requirements Specification</p>
+            <h1>Sikkim Tourism Assistant</h1>
+            <p>A Department-managed visitor information service bringing together verified tourism records, official
+                advisories, and carefully constrained AI assistance.</p>
+            <div class="meta"><span>Version 1.1</span><span>13 August 2026</span><span>Department handover
+                        candidate</span></div>
+            <div class="hero-stats" aria-label="Project handover summary">
+                <div class="hero-stat"><b>68</b><span>backend tests passing</span></div>
+                <div class="hero-stat"><b>Vercel + Railway</b><span>deployed application stack</span></div>
+                <div class="hero-stat"><b>Department-led</b><span>final domain and operations</span></div>
+            </div>
+        </div>
+    </div>
+</header>
+<div class="shell layout">
+    <nav id="nav" aria-label="Document sections"></nav>
+    <main id="content"></main>
+</div>
+<footer class="footer">
+    <div class="shell">
+        <div><strong>Sikkim Tourism Assistant</strong>
+            <p>Technical handover documentation for the Tourism &amp; Civil Aviation Department, Government of
+                Sikkim.</p>
+        </div>
+        <p>Prepared by Team Nexus · ICFAI University Sikkim</p>
+    </div>
+</footer>
 <script>
-const sections=[
-["summary","01","Executive summary",'<p>The Sikkim Tourism Assistant is a web-based visitor information system for the Tourism &amp; Civil Aviation Department, Government of Sikkim. It combines a responsive public interface with a protected administrative console and retrieval-augmented AI assistance.</p><p>Department-managed destinations, official circulars, and registered travel-agency records are the principal structured sources. The assistant is designed to identify uncertainty instead of presenting unverified details as official facts.</p><div class="grid"><div class="card"><strong>Public service</strong><p>Destinations, advisories, travel guidance, image-assisted questions, and streamed chat.</p></div><div class="card"><strong>Department control</strong><p>Protected records, circular ingestion, content maintenance, and vector-store synchronisation.</p></div><div class="card"><strong>Production posture</strong><p>Vercel frontend, Railway API, managed MySQL, optional remote Qdrant, and external AI providers.</p></div><div class="card"><strong>Handover boundary</strong><p>The Department owns final-domain integration, secrets, policy, monitoring, and public-release approval.</p></div></div>'],
-["scope","02","Scope and service boundaries",'<h3>In scope</h3><ul><li>Public destination browsing, search, filtering, advisory display, and tourism chat.</li><li>Guidance on permits, routes, seasons, culture, travel preparation, and registered travel agencies.</li><li>Administrator-controlled destination, circular, directory, and vector-store operations.</li><li>JPEG, PNG, and WebP chat-image analysis after server-side validation.</li></ul><h3>Out of scope</h3><ul><li>Payments, booking, ticketing, permit issuance, or identity-document collection.</li><li>Emergency dispatch, medical/legal determinations, or replacement of official Department workflows.</li><li>Unrestricted crawling or publishing unverified third-party content as an official notice.</li></ul>'],
-["architecture","03","Architecture and data flow",'<pre>Visitor browser\n      │  HTTPS / REST / Server-Sent Events\n      ▼\nReact + TypeScript frontend ── Vercel rewrite ──► FastAPI backend on Railway\n                                                       │\n             ┌───────────────────┬───────────────────┼──────────────────┐\n             ▼                   ▼                   ▼                  ▼\n           MySQL              Qdrant              Gemini              Groq\n     records and sessions  retrieval index     embeddings/OCR      response model</pre><p>In local development, Vite proxies <code>/api</code> to FastAPI. In the deployed configuration, Vercel routes <code>/api/*</code> to Railway. The browser uses the first-party frontend origin; authentication and authorisation are always enforced by the backend.</p><div class="note"><strong>Source priority:</strong> application records take precedence over official website results, which take precedence over other live web material and general model knowledge.</div>'],
-["requirements","04","Functional requirements",'<table><thead><tr><th>ID</th><th>Requirement</th></tr></thead><tbody><tr><td>FR-01–06</td><td>Display, search, filter, and detail Department-managed destinations; show weather only where coordinates are available.</td></tr><tr><td>FR-07–14</td><td>Provide Sikkim-focused SSE chat grounded in relevant Department records and transparent about uncertain current information.</td></tr><tr><td>FR-15–17</td><td>Accept validated JPEG, PNG, or WebP chat images without persisting raw image bytes in the conversation database.</td></tr><tr><td>FR-18–22</td><td>Publish a limited public advisory feed without OCR text, hashes, or administrative metadata.</td></tr><tr><td>FR-23–25</td><td>Resolve agency contacts and registrations from verified records, with clarification for ambiguous matches.</td></tr><tr><td>FR-26–29</td><td>Create anonymous, bearer-protected conversations and support idempotent message retries.</td></tr><tr><td>FR-30–37</td><td>Protect administrator setup, record maintenance, uploads, source synchronisation, re-indexing, and credential changes.</td></tr></tbody></table>'],
-["security","05","Security architecture",'<div class="grid"><div class="card"><strong>Authentication</strong><p>First-admin setup uses a server-only bootstrap secret. Protected actions use administrator credentials over HTTPS. Passwords use salted scrypt hashes.</p></div><div class="card"><strong>Data access</strong><p>MySQL queries use parameter binding. Remote MySQL validates the CA and server identity. Conversation bearer tokens are stored only as hashes.</p></div><div class="card"><strong>Input boundaries</strong><p>Pydantic validation, image signature checks, bounded request bodies, upload limits, and safe public errors protect API entry points.</p></div><div class="card"><strong>Browser controls</strong><p>CSP, HSTS in production, anti-framing, no-sniff, referrer policy, permissions policy, and restrictive frontend asset rules reduce browser attack surface.</p></div><div class="card"><strong>Scraper safety</strong><p>Only HTTPS resources on the approved tourism host are accepted. PDF redirects are disabled, documents are byte-capped, and signatures are checked.</p></div><div class="card"><strong>AI safety</strong><p>User messages, history, images, OCR, retrieval, and web material are untrusted data—not instructions. High-risk agency facts use deterministic records.</p></div></div><h3>Rate limiting</h3><p>Public database-backed routes, conversation creation, chat, administrator setup/login, and protected operations are rate-limited. Multi-instance hosting requires an edge/WAF or shared distributed limiter.</p>'],
-["data","06","Data and privacy",'<table><thead><tr><th>Entity</th><th>Purpose</th><th>Key protection</th></tr></thead><tbody><tr><td>Destinations</td><td>Department tourism catalogue</td><td>Admin-controlled fields and local image paths.</td></tr><tr><td>Circulars</td><td>Notices and road-status information</td><td>Hash de-duplication; public projection excludes OCR details.</td></tr><tr><td>Travel agencies</td><td>Registered directory</td><td>Registration-number key; deterministic detail responses.</td></tr><tr><td>Admin users</td><td>Protected administration</td><td>Salted scrypt password hashes.</td></tr><tr><td>Conversations/messages</td><td>Anonymous chat continuity</td><td>Bearer token hash; non-cacheable responses; Department retention policy required.</td></tr></tbody></table><div class="note">The Department must approve a privacy notice, retention schedule, access model, and process for receiving or deleting visitor data before official-domain launch.</div>'],
-["operations","07","Deployment and operations",'<h3>Production configuration</h3><pre>ENVIRONMENT=production\nALLOWED_ORIGINS=https://&lt;official-frontend-domain&gt;\nMYSQL_HOST=&lt;managed-mysql-host&gt;\nMYSQL_USER=&lt;database-user&gt;\nMYSQL_PASSWORD=&lt;secret&gt;\nMYSQL_DATABASE=sikkim_tourism\nGEMINI_API_KEY=&lt;secret&gt;\nGROQ_API_KEY=&lt;secret&gt;\nADMIN_API_KEY=&lt;at-least-32-character-bootstrap-secret&gt;</pre><h3>Required operating controls</h3><ul class="checks"><li>Set CORS to the exact final HTTPS official origin; never use a wildcard.</li><li>Store secrets only in the approved secret manager and rotate the bootstrap secret after first-admin setup.</li><li>Configure encrypted backups, restoration testing, monitoring, alerts, and incident contacts.</li><li>Apply schema and relevant migrations before application use.</li><li>Place the public backend behind WAF/DDoS protection and distributed rate limiting when scaled.</li><li>Define content review and expiry processes for time-sensitive circulars, fees, permits, and agency records.</li></ul>'],
-["verification","08","Verification and acceptance",'<table><thead><tr><th>Check</th><th>Result at handover</th></tr></thead><tbody><tr><td>Backend test suite</td><td>68 automated tests passed.</td></tr><tr><td>Frontend production build</td><td>TypeScript and Vite build completed successfully.</td></tr><tr><td>Dependency review</td><td>Python requirements and frontend lockfile reported no known advisories at the last audit.</td></tr><tr><td>Security coverage</td><td>Auth failures, SSRF rejections, request limits, malformed inputs, rate limits, and RAG context handling have regression coverage.</td></tr></tbody></table><h3>Department acceptance</h3><ol><li>Validate the final official-domain origin, certificates, secrets, and database connectivity.</li><li>Test visitor chat, advisories, destination management, circular ingestion, administrator access, and error paths.</li><li>Verify backup restoration and nominate operational and incident-response owners.</li><li>Conduct accessibility review and independent security testing before public launch.</li></ol>'],
-["handover","09","Handover and ownership",'<p>This repository is delivered as a deployed implementation and technical handover. Integration with <code>sikkimtourism.gov.in</code>, production secrets, official-domain policy, and ongoing operation are Department responsibilities.</p><div class="grid"><div class="card"><strong>Delivered</strong><p>Source code, README, SRS, schema, migrations, deployment configuration, test suite, and environment template.</p></div><div class="card"><strong>Department actions</strong><p>DNS and certificates, Vercel/Railway access, secrets, backups, monitoring, administrator governance, privacy, accessibility, and release approval.</p></div></div><div class="note"><strong>Operational limitation:</strong> an application-level in-memory rate limiter is not a shared counter. A multi-instance production service requires an edge/WAF or shared rate-limit provider.</div>']
-];
-var nav=document.getElementById("nav"),content=document.getElementById("content");
-nav.innerHTML="<p>Contents</p>"+sections.map(function(s){return "<a href=\"#"+s[0]+"\">"+s[1]+" · "+s[2]+"</a>"}).join("");
-content.innerHTML=sections.map(function(s){return "<section id=\""+s[0]+"\" data-reveal><p class=\"kicker\">"+s[1]+"</p><h2>"+s[2]+"</h2>"+s[3]+"</section>"}).join("");
-document.getElementById("print").onclick=function(){window.print()};
-document.getElementById("home").onclick=function(){window.scrollTo({top:0,behavior:"smooth"})};
-var links=[].slice.call(nav.querySelectorAll("a")),panels=[].slice.call(document.querySelectorAll("section"));
-var reveal=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add("visible")})},{threshold:.1});panels.forEach(function(p){reveal.observe(p)});
-var active=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)links.forEach(function(a){a.classList.toggle("active",a.hash==="#"+e.target.id)})})},{rootMargin:"-20% 0px -70% 0px"});panels.forEach(function(p){active.observe(p)});
-addEventListener("scroll",function(){document.getElementById("progress").style.width=(scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight)*100)+"%"},{passive:true});
+    const sections = [
+        ["summary", "01", "Executive summary", '<p>The Sikkim Tourism Assistant is a web-based visitor information system for the Tourism &amp; Civil Aviation Department, Government of Sikkim. It combines a responsive public interface with a protected administrative console and retrieval-augmented AI assistance.</p><p>Department-managed destinations, official circulars, and registered travel-agency records are the principal structured sources. The assistant is designed to identify uncertainty instead of presenting unverified details as official facts.</p><div class="grid"><div class="card"><strong>Public service</strong><p>Destinations, advisories, travel guidance, image-assisted questions, and streamed chat.</p></div><div class="card"><strong>Department control</strong><p>Protected records, circular ingestion, content maintenance, and vector-store synchronisation.</p></div><div class="card"><strong>Production posture</strong><p>Vercel frontend, Railway API, managed MySQL, optional remote Qdrant, and external AI providers.</p></div><div class="card"><strong>Handover boundary</strong><p>The Department owns final-domain integration, secrets, policy, monitoring, and public-release approval.</p></div></div>'],
+        ["scope", "02", "Scope and service boundaries", '<h3>In scope</h3><ul><li>Public destination browsing, search, filtering, advisory display, and tourism chat.</li><li>Guidance on permits, routes, seasons, culture, travel preparation, and registered travel agencies.</li><li>Administrator-controlled destination, circular, directory, and vector-store operations.</li><li>JPEG, PNG, and WebP chat-image analysis after server-side validation.</li></ul><h3>Out of scope</h3><ul><li>Payments, booking, ticketing, permit issuance, or identity-document collection.</li><li>Emergency dispatch, medical/legal determinations, or replacement of official Department workflows.</li><li>Unrestricted crawling or publishing unverified third-party content as an official notice.</li></ul>'],
+        ["architecture", "03", "Architecture and data flow", '<pre>Visitor browser\n      │  HTTPS / REST / Server-Sent Events\n      ▼\nReact + TypeScript frontend ── Vercel rewrite ──► FastAPI backend on Railway\n                                                       │\n             ┌───────────────────┬───────────────────┼──────────────────┐\n             ▼                   ▼                   ▼                  ▼\n           MySQL              Qdrant              Gemini              Groq\n     records and sessions  retrieval index     embeddings/OCR      response model</pre><p>In local development, Vite proxies <code>/api</code> to FastAPI. In the deployed configuration, Vercel routes <code>/api/*</code> to Railway. The browser uses the first-party frontend origin; authentication and authorisation are always enforced by the backend.</p><div class="note"><strong>Source priority:</strong> application records take precedence over official website results, which take precedence over other live web material and general model knowledge.</div>'],
+        ["requirements", "04", "Functional requirements", '<table><thead><tr><th>ID</th><th>Requirement</th></tr></thead><tbody><tr><td>FR-01–06</td><td>Display, search, filter, and detail Department-managed destinations; show weather only where coordinates are available.</td></tr><tr><td>FR-07–14</td><td>Provide Sikkim-focused SSE chat grounded in relevant Department records and transparent about uncertain current information.</td></tr><tr><td>FR-15–17</td><td>Accept validated JPEG, PNG, or WebP chat images without persisting raw image bytes in the conversation database.</td></tr><tr><td>FR-18–22</td><td>Publish a limited public advisory feed without OCR text, hashes, or administrative metadata.</td></tr><tr><td>FR-23–25</td><td>Resolve agency contacts and registrations from verified records, with clarification for ambiguous matches.</td></tr><tr><td>FR-26–29</td><td>Create anonymous, bearer-protected conversations and support idempotent message retries.</td></tr><tr><td>FR-30–37</td><td>Protect administrator setup, record maintenance, uploads, source synchronisation, re-indexing, and credential changes.</td></tr></tbody></table>'],
+        ["security", "05", "Security architecture", '<div class="grid"><div class="card"><strong>Authentication</strong><p>First-admin setup uses a server-only bootstrap secret. Protected actions use administrator credentials over HTTPS. Passwords use salted scrypt hashes.</p></div><div class="card"><strong>Data access</strong><p>MySQL queries use parameter binding. Remote MySQL validates the CA and server identity. Conversation bearer tokens are stored only as hashes.</p></div><div class="card"><strong>Input boundaries</strong><p>Pydantic validation, image signature checks, bounded request bodies, upload limits, and safe public errors protect API entry points.</p></div><div class="card"><strong>Browser controls</strong><p>CSP, HSTS in production, anti-framing, no-sniff, referrer policy, permissions policy, and restrictive frontend asset rules reduce browser attack surface.</p></div><div class="card"><strong>Scraper safety</strong><p>Only HTTPS resources on the approved tourism host are accepted. PDF redirects are disabled, documents are byte-capped, and signatures are checked.</p></div><div class="card"><strong>AI safety</strong><p>User messages, history, images, OCR, retrieval, and web material are untrusted data—not instructions. High-risk agency facts use deterministic records.</p></div></div><h3>Rate limiting</h3><p>Public database-backed routes, conversation creation, chat, administrator setup/login, and protected operations are rate-limited. Multi-instance hosting requires an edge/WAF or shared distributed limiter.</p>'],
+        ["data", "06", "Data and privacy", '<table><thead><tr><th>Entity</th><th>Purpose</th><th>Key protection</th></tr></thead><tbody><tr><td>Destinations</td><td>Department tourism catalogue</td><td>Admin-controlled fields and local image paths.</td></tr><tr><td>Circulars</td><td>Notices and road-status information</td><td>Hash de-duplication; public projection excludes OCR details.</td></tr><tr><td>Travel agencies</td><td>Registered directory</td><td>Registration-number key; deterministic detail responses.</td></tr><tr><td>Admin users</td><td>Protected administration</td><td>Salted scrypt password hashes.</td></tr><tr><td>Conversations/messages</td><td>Anonymous chat continuity</td><td>Bearer token hash; non-cacheable responses; Department retention policy required.</td></tr></tbody></table><div class="note">The Department must approve a privacy notice, retention schedule, access model, and process for receiving or deleting visitor data before official-domain launch.</div>'],
+        ["operations", "07", "Deployment and operations", '<h3>Production configuration</h3><pre>ENVIRONMENT=production\nALLOWED_ORIGINS=https://&lt;official-frontend-domain&gt;\nMYSQL_HOST=&lt;managed-mysql-host&gt;\nMYSQL_USER=&lt;database-user&gt;\nMYSQL_PASSWORD=&lt;secret&gt;\nMYSQL_DATABASE=sikkim_tourism\nGEMINI_API_KEY=&lt;secret&gt;\nGROQ_API_KEY=&lt;secret&gt;\nADMIN_API_KEY=&lt;at-least-32-character-bootstrap-secret&gt;</pre><h3>Required operating controls</h3><ul class="checks"><li>Set CORS to the exact final HTTPS official origin; never use a wildcard.</li><li>Store secrets only in the approved secret manager and rotate the bootstrap secret after first-admin setup.</li><li>Configure encrypted backups, restoration testing, monitoring, alerts, and incident contacts.</li><li>Apply schema and relevant migrations before application use.</li><li>Place the public backend behind WAF/DDoS protection and distributed rate limiting when scaled.</li><li>Define content review and expiry processes for time-sensitive circulars, fees, permits, and agency records.</li></ul>'],
+        ["verification", "08", "Verification and acceptance", '<table><thead><tr><th>Check</th><th>Result at handover</th></tr></thead><tbody><tr><td>Backend test suite</td><td>68 automated tests passed.</td></tr><tr><td>Frontend production build</td><td>TypeScript and Vite build completed successfully.</td></tr><tr><td>Dependency review</td><td>Python requirements and frontend lockfile reported no known advisories at the last audit.</td></tr><tr><td>Security coverage</td><td>Auth failures, SSRF rejections, request limits, malformed inputs, rate limits, and RAG context handling have regression coverage.</td></tr></tbody></table><h3>Department acceptance</h3><ol><li>Validate the final official-domain origin, certificates, secrets, and database connectivity.</li><li>Test visitor chat, advisories, destination management, circular ingestion, administrator access, and error paths.</li><li>Verify backup restoration and nominate operational and incident-response owners.</li><li>Conduct accessibility review and independent security testing before public launch.</li></ol>'],
+        ["handover", "09", "Handover and ownership", '<p>This repository is delivered as a deployed implementation and technical handover. Integration with <code>sikkimtourism.gov.in</code>, production secrets, official-domain policy, and ongoing operation are Department responsibilities.</p><div class="grid"><div class="card"><strong>Delivered</strong><p>Source code, README, SRS, schema, migrations, deployment configuration, test suite, and environment template.</p></div><div class="card"><strong>Department actions</strong><p>DNS and certificates, Vercel/Railway access, secrets, backups, monitoring, administrator governance, privacy, accessibility, and release approval.</p></div></div><div class="note"><strong>Operational limitation:</strong> an application-level in-memory rate limiter is not a shared counter. A multi-instance production service requires an edge/WAF or shared rate-limit provider.</div>']
+    ];
+    var nav = document.getElementById("nav"), content = document.getElementById("content");
+    nav.innerHTML = "<p>Contents</p>" + sections.map(function (s) { return "<a href=\"#" + s[0] + "\">" + s[1] + " · " + s[2] + "</a>" }).join("");
+    content.innerHTML = sections.map(function (s) { return "<section id=\"" + s[0] + "\" data-reveal><p class=\"kicker\">" + s[1] + "</p><h2>" + s[2] + "</h2>" + s[3] + "</section>" }).join("");
+    document.getElementById("print").onclick = function () { window.print() };
+    document.getElementById("home").onclick = function () { window.scrollTo({ top: 0, behavior: "smooth" }) };
+    var links = [].slice.call(nav.querySelectorAll("a")), panels = [].slice.call(document.querySelectorAll("section"));
+    var reveal = new IntersectionObserver(function (entries) { entries.forEach(function (e) { if (e.isIntersecting) e.target.classList.add("visible") }) }, { threshold: .1 }); panels.forEach(function (p) { reveal.observe(p) });
+    var active = new IntersectionObserver(function (entries) { entries.forEach(function (e) { if (e.isIntersecting) links.forEach(function (a) { a.classList.toggle("active", a.hash === "#" + e.target.id) }) }) }, { rootMargin: "-20% 0px -70% 0px" }); panels.forEach(function (p) { active.observe(p) });
+    addEventListener("scroll", function () { document.getElementById("progress").style.width = (scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight) * 100) + "%" }, { passive: true });
 </script>
 </body>
+
 </html>

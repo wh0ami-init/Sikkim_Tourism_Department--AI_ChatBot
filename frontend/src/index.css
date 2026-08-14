@@ -465,6 +465,57 @@
   animation: chat-caret 1s steps(1) infinite;
 }
 
+/* Tables in the compact chat are deliberately wider than the message bubble:
+   preserving columns is more readable than crushing labels into one character
+   per line. Keep the horizontal scroll affordance visible on small panels. */
+.chat-table {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(19, 66, 56, 0.38) transparent;
+}
+
+.chat-table::-webkit-scrollbar {
+  height: 7px;
+}
+
+.chat-table::-webkit-scrollbar-thumb {
+  background: rgba(19, 66, 56, 0.38);
+  border-radius: 999px;
+}
+
+/* The dark-mode conversation surface uses a slow aurora rather than a busy
+   effect: it gives the assistant depth without competing with long answers. */
+.dark .chat-conversation {
+  background: #071516 !important;
+}
+
+.dark .chat-aurora {
+  background:
+    radial-gradient(72% 62% at 7% 8%, rgba(20, 116, 102, 0.38) 0%, transparent 67%),
+    radial-gradient(62% 58% at 94% 16%, rgba(22, 86, 126, 0.3) 0%, transparent 70%),
+    radial-gradient(68% 56% at 55% 104%, rgba(113, 73, 148, 0.25) 0%, transparent 72%),
+    linear-gradient(145deg, #071516 0%, #0b2023 48%, #101b2a 100%) !important;
+  background-size: 150% 150%;
+  animation: chat-aurora-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes chat-aurora-drift {
+  0% {
+    background-position: 0% 20%;
+    filter: saturate(0.96);
+  }
+
+  100% {
+    background-position: 100% 78%;
+    filter: saturate(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark .chat-aurora {
+    animation: none;
+  }
+}
+
 /* ── Chat surfaces — static glass panel, glow edge, springy message
      entrance. Deliberately no continuously-drifting motion in the panel
      itself (mesh/header sweep/floating orbs were removed): for a

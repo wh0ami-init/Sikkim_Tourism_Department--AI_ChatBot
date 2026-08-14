@@ -1,5 +1,5 @@
 """
-|| Abstract_Repository || — defines the interface every Data-Backend must implement.
+ Abstract_Repository  — interface for application persistence.
 
 Add a new backend by subclassing BaseRepository and implementing every abstract
 method.  The rest of the app imports only this interface and get_repo() from
@@ -25,8 +25,7 @@ from app.models.schemas import (
 MessageRole = Literal["user", "assistant"]
 
 class BaseRepository(ABC):
-    """Common interface for the data storage backend (MySQL)."""
-
+    """Common interface for application persistence."""
     @abstractmethod
     async def admin_user_exists(self) -> bool:
         """Return whether the first password-based admin account exists."""

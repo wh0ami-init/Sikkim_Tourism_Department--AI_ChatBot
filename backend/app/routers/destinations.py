@@ -1,6 +1,4 @@
-"""
-Python_Version_Integrate_Destinations_Router — Read-Only Public API Endpoints.
-"""
+"""Read-only public destination endpoints."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -12,11 +10,9 @@ from app.limiting import limiter
 
 router = APIRouter()
 
-# Python_Version_Integrate_Valid_Categories--Set
 VALID_CATEGORIES = {"nature", "culture", "adventure", "pilgrimage", "wildlife"}
 
 
-# Python_Version_Integrate_Summary_Transformer--Function
 def _to_summary(d: Destination) -> DestinationSummary:
     description_text = d.description or ""
     trimmed_desc = description_text[:160] + ("…" if len(description_text) > 160 else "")
@@ -37,7 +33,6 @@ def _to_summary(d: Destination) -> DestinationSummary:
     )
 
 
-# Python_Version_Integrate_List_Destinations--Endpoint
 @router.get("", response_model=DestinationsListResponse)
 @limiter.limit("60/minute")
 async def list_destinations(
@@ -59,7 +54,6 @@ async def list_destinations(
     )
 
 
-# Python_Version_Integrate_List_Categories--Endpoint
 @router.get("/categories")
 @limiter.limit("60/minute")
 async def list_categories(request: Request):
@@ -93,7 +87,6 @@ async def list_public_advisories(
     ]
 
 
-# Python_Version_Integrate_Get_Destination--Endpoint
 @router.get("/{destination_id}", response_model=Destination)
 @limiter.limit("60/minute")
 async def get_destination(

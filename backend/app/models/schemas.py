@@ -56,8 +56,8 @@ class Destination(BaseModel):
     permit_required: bool = False
     permit_info: str | None = None
     how_to_reach: str
-    highlights: list[str] = []
-    tags: list[str] = []
+    highlights: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     image_placeholder: str = ""
     # Relative URL (e.g. /images/Gangtok.png) or colour hex used as CSS
     # background fallback when no image is available.
@@ -107,9 +107,9 @@ class DestinationWrite(BaseModel):
         value = value.strip()
         if not value:
             return None
-        if value.startswith("/images/"):
+        if re.fullmatch(r"/images/[A-Za-z0-9][A-Za-z0-9._-]*", value):
             return value
-        raise ValueError("image_url must be a local /images/ path.")
+        raise ValueError("image_url must be a local /images/ filename.")
 
 
 class DestinationSummary(BaseModel):

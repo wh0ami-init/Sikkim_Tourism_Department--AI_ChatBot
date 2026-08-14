@@ -148,3 +148,8 @@ def test_circular_scraper_is_locked_to_the_official_tourism_domain():
 
     with pytest.raises(ValidationError, match="CIRCULARS_NOTICE_URL"):
         Settings(circulars_notice_url="https://www.sikkim.gov.in/notices")
+
+
+def test_circular_scraper_limits_must_be_positive():
+    with pytest.raises(ValidationError, match="circulars_sync_interval_minutes"):
+        Settings(circulars_sync_interval_minutes=0)

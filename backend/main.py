@@ -30,7 +30,7 @@ from app.startup import resync_vectorstore, populate_vectorstore
 from app.models.schemas import AdminCredentials, AdminCredentialsChange, AdminUser, Destination, DestinationWrite
 from app.services.admin_auth import hash_password, validate_password, verify_password
 
-# Logger --> Configuration_&_Startup_Section
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -102,13 +102,11 @@ class RequestSizeLimitMiddleware:
                 content={"detail": "Request exceeds the server limit."},
             )(scope, receive, send)
 
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── FastAPI_LIFESPAN_FUNCTION ───────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     repo = get_repo()
 
-    # Vector_Store --> Startup_Section
+    # Populate the retrieval index without preventing the API from starting.
     try:
         indexed = await populate_vectorstore(repo)
         logger.info("Startup: Vectorstore populated with %d documents.", indexed)
@@ -119,7 +117,7 @@ async def lifespan(app: FastAPI):
             "This may lead to degraded performance or missing information."
         )
 
-    # Circular_Scraper -->  Startup_Section
+    # Start the optional circular-ingestion scheduler.
     scheduler = None
     if settings.enable_circular_scraper:
         try:
@@ -146,7 +144,6 @@ async def lifespan(app: FastAPI):
                     "The circular scraper will not run. Please check the configuration and dependencies."
                 )
 
-            # Scraper_Scheduler --> Initialization_&_Execution
             scheduler = AsyncIOScheduler()
 
             scheduler.add_job(
@@ -169,40 +166,25 @@ async def lifespan(app: FastAPI):
             "Startup: Circular scraper is disabled. No scheduled tasks will run. "
             "Manual Upload of circulars is still possible via the /circulars/upload endpoint."
         )
-    # [Boundary_Section --> Startup : Before || Shutdown : After] ~> `yield`
     yield
 
-    # Shutdown --> Section
     if scheduler is not None:
         scheduler.shutdown(wait=False)
-# ── [[ |> ]] ───────────────────────────────────────────────────
 
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── BROWSER_SECURITY_HEADERS --> Security_Based ───────────────────────────────────────────────────
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Applied Browser Protections consistently to every API response."""
+    """Apply consistent browser security headers to API responses."""
 
     async def dispatch(self, request: Request, call_next):
 
-        # Central_Line_of_Security --> Middleware_Section
         response = await call_next(request)
 
-        # No_Guesses_of_different_Content-Type
         response.headers["X-Content-Type-Options"] = "nosniff"
-
-        # Restricted_Page_From_Embedding_of_iframe
         response.headers["X-Frame-Options"] = "DENY"
-
-        # Restriction_of_Limited_Information
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-        # Appropriate_CSP_Policy_of_Particular_Route --> Returns
-        response.headers["Content-Security-Policy"] = _content_security_policy( request.url.path)
-
-        # Restricted_Accessibility_of_Permissions
+        response.headers["Content-Security-Policy"] = _content_security_policy(request.url.path)
         response.headers["Permissions-Policy"] = ("geolocation=(), microphone=(self), camera=()")
 
-        # Conversation_ID == Bearer_Tokens --> Must not be cached
+        # Responses containing authenticated or conversation data must not be cached.
         if request.url.path.startswith(("/api/conversations", "/api/admin")):
             response.headers.setdefault(
                 "Cache-Control", "no-store, max-age=0, must-revalidate"
@@ -213,22 +195,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 and response.status_code == 200
         ):
 
-            # Browser/CDN_Caching --> Public_Destination_Caching
             response.headers.setdefault(
                 "Cache-Control", "public, max-age=300, s-maxage=3600"
             )
 
-        # HSTS --> HTTP_Strict_Transport_Security
         if settings.environment == "production":
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"
             )
 
         return response
-    # ── [[ |> ]] ───────────────────────────────────────────────────
-
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── CONTENT_SECURITY_POLICY_HEADER--Helper_Function ───────────────────────────────────────────────────
 def _content_security_policy(path: str) -> str:
     """Return the least-permissive policy needed for the requested endpoint.
 
@@ -259,10 +235,6 @@ def _content_security_policy(path: str) -> str:
         "script-src 'self'; "
         "connect-src 'self' https://api.open-meteo.com"
     )
-# ── [[ |> ]] ───────────────────────────────────────────────────
-
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── FastAPI  -> Application_Setup/Build ───────────────────────────────────────────────────
 app = FastAPI(
     title = "Sikkim Tourism AI Assistant API Endpoints Console Page",
     description = (
@@ -277,22 +249,14 @@ app = FastAPI(
     openapi_url = "/api/openapi.json" if settings.environment != "production" else None,
     lifespan = lifespan,
 )
-# ── [[ |> ]] ───────────────────────────────────────────────────
-
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── SECURITY_CONFIGURATION_SECTION ───────────────────────────────────────────────────
-
-# CORS_Settings --> Configuration
 origins = settings.origins_list
 methods = settings.methods_list
 headers = settings.headers_list
 allow_credentials = origins != ["*"]
 
-# Adds_Security_MiddleWare
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# CORS_Actual_Middleware --> Security_Section
 app.add_middleware(
     CORSMiddleware,
     allow_origins = origins,
@@ -301,20 +265,10 @@ app.add_middleware(
     allow_headers = headers,
 )
 
-# Rate_Limiter
 app.state.limiter = limiter
-# ── [[ |> ]] ───────────────────────────────────────────────────
-
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── REGISTRATION_OF_ROUTERS --> Section ───────────────────────────────────────────────────
 app.include_router(destinations.router, prefix = "/api/destinations", tags = ["Destinations"])
 app.include_router(chat.router, prefix = "/api/conversations", tags = ["Chat"])
-# ── [[ |> ]] ───────────────────────────────────────────────────
 
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── EXCEPTION_HANDLER_SECTION ───────────────────────────────────────────────────
-
-# Rate_Limit --> Exception_Handler
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
@@ -322,7 +276,6 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
         content = {"detail": "Too many requests. Please wait a moment before trying again."},
     )
 
-# Unhandled --> Exception_Handler
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """Log detail server-side while returning a stable public error shape."""
@@ -339,10 +292,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         status_code = 500,
         content = {"detail": "Internal server error. Please try again."},
     )
-# ── [[ |> ]] ───────────────────────────────────────────────────
-
-# ── [[ || ]] ───────────────────────────────────────────────────
-# ── HTTP_EXCEPTION_HANDLER_SECTION ───────────────────────────────────────────────────
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
@@ -710,7 +659,3 @@ app.include_router(admin_auth_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-# ───────────────────────────────────────────────────────────
-# ───────────────────────────────────────────────────────────
-# ───────────────────────────────────────────────────────────

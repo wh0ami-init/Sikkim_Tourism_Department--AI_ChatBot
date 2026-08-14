@@ -1,18 +1,17 @@
-"""
-|| App_Configuration || —> reads from .env (Environment_Variables).
-No Hardcoded Credentials within this File ...
-"""
+"""Application settings loaded from environment variables and ``.env``."""
 
 from urllib.parse import urlparse
 from pathlib import Path
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    """Runtime settings with production safety checks."""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # MySQL--Conf.
+    # MySQL connection
     mysql_host: str = "localhost"
     mysql_port: int = 3306
     mysql_user: str = "root"
@@ -20,68 +19,66 @@ class Settings(BaseSettings):
     mysql_database: str = "sikkim_tourism"
     mysql_ssl_ca: str = "certs/ca.pem"
 
-    # Gemini_AI--Conf.
+    # Gemini
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
 
-    # Embedding_Model_AI--Conf.
+    # Embedding model
     gemini_embedding_model: str = "models/gemini-embedding-001"
 
-    # Groq_AI--Conf.
+    # Groq
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
     groq_fallback_model: str = "llama-3.1-8b-instant"
 
-    # Prompt_Guard--Conf.
+    # Prompt guard
     enable_prompt_guard: bool = False
     prompt_guard_model: str = "meta-llama/llama-prompt-guard-2-86m"
 
-    # Tavily_AI_Web_Search--Conf.
+    # Optional web search
     tavily_api_key: str = ""
 
-    # Follow_Up_Suggestions--Conf.
+    # Follow-up suggestions
     enable_followups: bool = False
 
-    # Vector_Store--Conf.
+    # Vector store
     qdrant_url: str = ""
     qdrant_api_key: str = ""
     qdrant_collection: str = "sikkim_destinations"
 
-    # Cross_Origin_Resource_Sharing--Conf
+    # CORS
     allowed_origins: str = "http://localhost:5173"
     allowed_methods: str = "GET, POST, PUT, DELETE, OPTIONS"
     allowed_headers: str = "Content-Type, Authorization, X-Admin-Key, X-Conversation-Token"
 
-    # Circular_Scraper--Conf.
+    # Circular scraper
     circulars_allowed_host: str = "sikkimtourism.gov.in"
     circulars_notice_url: str = "https://sikkimtourism.gov.in/updates/notice"
-    circulars_sync_interval_minutes: int = 45
-    circulars_max_pdf_bytes: int = 15 * 1024 * 1024
-    circulars_max_per_run: int = 20
+    circulars_sync_interval_minutes: int = Field(default=45, ge=1, le=24 * 60)
+    circulars_max_pdf_bytes: int = Field(default=15 * 1024 * 1024, ge=1)
+    circulars_max_per_run: int = Field(default=20, ge=1, le=100)
     enable_circular_scraper: bool = False
 
-    # Restricted_File_Uploads--Conf.
-    max_admin_upload_request_bytes: int = 16 * 1024 * 1024
-    max_chat_request_bytes: int = 6 * 1024 * 1024
+    # Request size limits
+    max_admin_upload_request_bytes: int = Field(default=16 * 1024 * 1024, ge=1)
+    max_chat_request_bytes: int = Field(default=6 * 1024 * 1024, ge=1)
 
-    # Administrator_Authentication--Conf.
+    # Administrator authentication
     admin_api_key: str = ""
 
-    # Runtime--Conf.
+    # Runtime
     environment: str = "development"
 
-    # Environment_Normalizer--Validator
     @field_validator("environment", mode="before")
     @classmethod
     def normalise_environment(cls, value: str) -> str:
         if not isinstance(value, str):
-            raise ValueError("ENVIRONMENT, must be of 'string' type.")
+            raise ValueError("ENVIRONMENT must be a string.")
         value = value.strip().lower()
         if value not in {"development", "production"}:
-            raise ValueError("ENVIRONMENT, must be either 'development' or 'production'. ")
+            raise ValueError("ENVIRONMENT must be either 'development' or 'production'.")
         return value
 
-    # Allowed_Origins--Validator
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def normalise_allowed_origins(cls, value: str) -> str:
@@ -89,7 +86,6 @@ class Settings(BaseSettings):
             raise ValueError("ALLOWED_ORIGINS must be a comma-separated string")
         return ",".join(origin.strip() for origin in value.split(",") if origin.strip())
 
-    # Database_Mode--Validator
     @property
     def db_mode(self) -> str:
         """Database backend in use. MySQL is the only supported backend."""
@@ -103,15 +99,10 @@ class Settings(BaseSettings):
             path = Path(__file__).resolve().parents[1] / path
         return str(path)
 
-    # Origins_List--Validator
     @property
     def origins_list(self) -> list[str]:
-        if self.allowed_origins == "*":
-            import logging
-            logging.warning("Allowed Origins is set to '*', which allows all origins. This may pose security risk in production.")
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
-    # HTTP_Methods--Validator
     @property
     def methods_list(self) -> list[str]:
         methods = [m.strip().upper() for m in self.allowed_methods.split(",") if m.strip()]
@@ -120,17 +111,14 @@ class Settings(BaseSettings):
             raise ValueError("ALLOWED_METHODS contains an unsupported HTTP method.")
         return methods
 
-    # HTTP_Headers--Validator
     @property
     def headers_list(self) -> list[str]:
         return [h.strip() for h in self.allowed_headers.split(",") if h.strip()]
 
-    # Qdrant_Mode--Validator
     @property
     def qdrant_mode(self) -> str:
         return "Remote_Qdrant" if self.qdrant_url else "Local_Qdrant"
 
-    # CORS_&_HTTPS--Validator
     @model_validator(mode="after")
     def validate_production_security(self):
         """Reject unsafe browser-access and official-scraper settings."""

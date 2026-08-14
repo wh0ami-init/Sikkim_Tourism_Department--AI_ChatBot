@@ -2,6 +2,11 @@
 Tests for the read-only /api/destinations endpoints.
 """
 
+import pytest
+from pydantic import ValidationError
+
+from app.models.schemas import DestinationWrite
+
 VALID_CATEGORIES = {"nature", "culture", "adventure", "pilgrimage", "wildlife"}
 
 
@@ -62,3 +67,20 @@ def test_search_by_name(client):
     assert resp.status_code == 200
     names = [d["name"] for d in resp.json()["destinations"]]
     assert any("Gangtok" in n for n in names)
+
+
+def test_destination_image_url_rejects_non_filename_paths():
+    payload = {
+        "name": "Test destination",
+        "slug": "test-destination",
+        "category": "nature",
+        "description": "A test destination.",
+        "location": "Sikkim",
+        "district": "Gangtok",
+        "best_time": "March to May",
+        "how_to_reach": "By road.",
+        "image_url": "/images/../index.html",
+    }
+
+    with pytest.raises(ValidationError, match="local /images/ filename"):
+        DestinationWrite(**payload)
