@@ -7,10 +7,12 @@ import { useChatTheme } from "@/config/chat-theme";
 import { useTypewriter } from "@/hooks/use-typewriter";
 import { withAlpha } from "@/lib/utils";
 
-// Markdown rendering and image/voice chat controls are only needed after a
-// visitor opens the assistant. Deferring them materially reduces the landing
-// page download on Vercel.
-const Chat = lazy(() => import("@/components/chat").then((module) => ({ default: module.Chat })));
+/* Markdown rendering and image/voice chat controls are only needed after a
+   visitor opens the assistant. Deferring them materially reduces the landing
+   page download on Vercel. */
+const Chat = lazy(() =>
+  import("@/components/chat").then((module) => ({ default: module.Chat })),
+);
 
 /* Bilingual greeting rotation for the launcher hint chip — English and
    Hindi, alternating, so the nudge reads naturally to both audiences. */
@@ -20,8 +22,6 @@ const GREETINGS = [
   "Need help planning your trip?",
   "यात्रा की योजना बनानी है?",
 ];
-
-
 
 /* Keep this in sync with Tailwind's `sm` breakpoint (40rem / 640px). The
    fullscreen toggle is a desktop-only affordance — below this width the
@@ -152,13 +152,18 @@ export function ChatWidget() {
 
         <div className={!isOpen ? "animate-chat-float" : undefined}>
           <motion.button
-              type="button"
-              onClick={() => setIsOpen((v) => !v)}
-              initial={{ scale: 0, opacity: 0, rotate: -25 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.3 }}
-              whileTap={{ scale: 0.96 }}
-              whileHover={{ scale: 1.05 }}
+            type="button"
+            onClick={() => setIsOpen((v) => !v)}
+            initial={{ scale: 0, opacity: 0, rotate: -25 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 16,
+              delay: 0.3,
+            }}
+            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.05 }}
             className="chat-glow-ring focus-ring relative flex h-14 w-14 items-center justify-center rounded-full shadow-[0_14px_30px_-12px_rgba(19,66,56,0.55)] ring-1 ring-white/15 backdrop-blur-md transition-shadow hover:shadow-[0_18px_40px_-14px_rgba(19,66,56,0.6)] sm:h-[60px] sm:w-[60px]"
             style={{
               background: `linear-gradient(145deg, ${theme.pine} 0%, ${theme.pineAlt} 100%)`,
@@ -228,13 +233,13 @@ export function ChatWidget() {
       {/* ── Chat panel ──────────────────────────────────────────────────── */}
       <AnimatePresence>
         {isOpen && (
-            <motion.div
-                key="panel"
-                initial={{ opacity: 0, scale: 0.85, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 12 }}
-                transition={{ type: "spring", stiffness: 340, damping: 28 }}
-                style={{ transformOrigin: "bottom right" }}
+          <motion.div
+            key="panel"
+            initial={{ opacity: 0, scale: 0.85, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 12 }}
+            transition={{ type: "spring", stiffness: 340, damping: 28 }}
+            style={{ transformOrigin: "bottom right" }}
             className={
               isFullscreen
                 ? "fixed inset-0 z-[70] sm:inset-3"
@@ -426,7 +431,9 @@ export function ChatWidget() {
                 className="relative min-h-0 flex-1 backdrop-blur-xl backdrop-saturate-150"
                 style={{ background: theme.bg }}
               >
-                <Suspense fallback={<div className="h-full" aria-busy="true" />}>
+                <Suspense
+                  fallback={<div className="h-full" aria-busy="true" />}
+                >
                   <Chat compact />
                 </Suspense>
               </div>

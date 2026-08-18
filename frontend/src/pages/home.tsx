@@ -146,7 +146,7 @@ export default function Home() {
     {
       icon: Sparkles,
       title: "Always at your side",
-      body: "Tap the mountain icon in the corner, anytime, on any page — it opens instantly.",
+      body: "Tap the icon in the corner, anytime, on any page — it opens instantly.",
     },
   ];
 
