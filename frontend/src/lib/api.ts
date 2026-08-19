@@ -139,22 +139,24 @@ export type DestinationWrite = Omit<RawDestination, "id">;
 export interface Circular {
   id: number;
   title: string;
-  category: "road_status" | "cancellation_order" | "notice";
+  category: "road_status" | "cancellation_order" | "tender";
   district: string | null;
   issue_date: string;
   source_url: string;
   extracted_text: string;
   ingested_at: string;
+  has_file: boolean;
 }
 
 /** Small, safe public projection of an official circular. */
 export interface Advisory {
   id: number;
   title: string;
-  category: "road_status" | "cancellation_order" | "notice";
+  category: "road_status" | "cancellation_order" | "tender";
   district: string | null;
   issue_date: string;
   source_url: string;
+  has_file: boolean;
 }
 
 export interface AdminDashboard {
@@ -247,9 +249,14 @@ interface RawMessage {
   client_message_id?: string | null;
 }
 
-export function fetchAdvisories(signal?: AbortSignal): Promise<Advisory[]> {
-  return apiFetch<Advisory[]>("/destinations/advisories?limit=3", { signal });
+export function fetchAdvisories(
+  category: Advisory["category"],
+  signal?: AbortSignal,
+): Promise<Advisory[]> {
+  return apiFetch<Advisory[]>(`/destinations/advisories?category=${category}&limit=100`, { signal });
 }
+
+export const advisoryFileUrl = (id: number) => `/api/destinations/advisories/${id}/file`;
 
 // ── Mappers (backend snake_case → frontend camelCase) ────────────────────────
 

@@ -72,13 +72,16 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS circulars (
                                          id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
                                          title           VARCHAR(300)  NOT NULL,
-    category        ENUM('road_status', 'cancellation_order', 'notice') NOT NULL,
+    category        ENUM('road_status', 'cancellation_order', 'tender') NOT NULL,
     district        VARCHAR(100)  NULL,
     issue_date      DATE          NOT NULL,
     source_url      VARCHAR(500)  NOT NULL,
     pdf_hash        CHAR(64)      NOT NULL,
     extracted_text  LONGTEXT      NOT NULL,
     ingested_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    file_content    LONGBLOB      NULL,
+    file_mime_type  VARCHAR(100)  NULL,
+    file_name       VARCHAR(255)  NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_circulars_pdf_hash (pdf_hash),
     INDEX idx_circulars_category_date (category, issue_date)

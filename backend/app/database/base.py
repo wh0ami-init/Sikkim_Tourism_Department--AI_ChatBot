@@ -66,8 +66,20 @@ class BaseRepository(ABC):
         ...
 
     @abstractmethod
+    async def refresh_circular_listing_metadata(
+            self, pdf_hash: str, title: str, category: str, source_url: str,
+    ) -> None:
+        """Refresh a scraped circular's title/category without reprocessing its PDF."""
+        ...
+
+    @abstractmethod
     async def save_circular(self, circular: Circular) -> Circular:
         """Persist a newly-scraped circular and return it."""
+        ...
+
+    @abstractmethod
+    async def get_circular_file(self, circular_id: int) -> Circular | None:
+        """Return a circular with its stored upload payload, when available."""
         ...
 
     @abstractmethod

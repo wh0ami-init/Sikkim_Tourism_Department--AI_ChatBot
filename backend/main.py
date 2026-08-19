@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import uvicorn
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -119,6 +119,7 @@ async def lifespan(app: FastAPI):
 
     # Start the optional circular-ingestion scheduler.
     scheduler = None
+    initial_circular_sync_task: asyncio.Task[None] | None = None
     if settings.enable_circular_scraper:
         try:
             from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -132,17 +133,23 @@ async def lifespan(app: FastAPI):
                 "The circular scraper will not run. Please ensure all dependencies are installed."
             )
         else:
-            try:
-                summary = await run_circular_sync(repo)
-                logger.info(
-                    "Startup: Circular scraper ran successfully. %d new circulars processed.",
-                    summary["new"],
-                )
-            except Exception as exc:
-                logger.error("Startup: Circular scraper failed to run (non-fatal): %s", exc)
-                logger.warning(
-                    "The circular scraper will not run. Please check the configuration and dependencies."
-                )
+            async def initial_circular_sync() -> None:
+                """Run the first sync without holding the API in startup state."""
+                try:
+                    summary = await run_circular_sync(repo)
+                    logger.info(
+                        "Startup: Initial circular sync completed. %d new circulars processed.",
+                        summary["new"],
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    logger.error("Startup: Initial circular sync failed (non-fatal): %s", exc)
+
+            initial_circular_sync_task = asyncio.create_task(
+                initial_circular_sync(), name="initial-circular-sync"
+            )
+            logger.info("Startup: Initial circular sync is running in the background.")
 
             scheduler = AsyncIOScheduler()
 
@@ -170,6 +177,10 @@ async def lifespan(app: FastAPI):
 
     if scheduler is not None:
         scheduler.shutdown(wait=False)
+    if initial_circular_sync_task is not None and not initial_circular_sync_task.done():
+        initial_circular_sync_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await initial_circular_sync_task
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Apply consistent browser security headers to API responses."""
@@ -465,7 +476,7 @@ async def sync_agencies(request: Request, repo=Depends(get_repo)):
     return await run_travel_agency_sync(repo)
 
 
-_UPLOAD_CATEGORIES = {"road_status", "cancellation_order", "notice"}
+_UPLOAD_CATEGORIES = {"road_status", "cancellation_order", "tender"}
 
 
 @admin_router.get("/dashboard")
@@ -643,6 +654,7 @@ async def upload_circular(
         category=category,
         source_url="manual-upload:whatsapp",
         mime_type=file.content_type,
+        file_name=file.filename,
         district=district,
     )
 

@@ -9,13 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { LockKeyhole, Map, MessageSquare, Sun, Moon, Menu, X } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
-import { DarkThemePicker } from "@/components/dark-theme-picker";
 import { GOVT_LOGO_SRC } from "@/config/brand";
-import {
-  applyDarkPaletteVars,
-  clearDarkPaletteVars,
-  getSavedDarkPalette,
-} from "@/lib/dark-palette";
 
 function SikkimLogo({ className = "" }: { className?: string }) {
   return (
@@ -51,15 +45,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
-      // Reapply the user's custom dark surface color, if they set one —
-      // inline vars win over the stylesheet's ".dark {...}" defaults.
-      const saved = getSavedDarkPalette();
-      if (saved) applyDarkPaletteVars(saved);
     } else {
       root.classList.remove("dark");
-      // Inline overrides apply regardless of the "dark" class, so they must
-      // be cleared in light mode or they'd leak into the light palette too.
-      clearDarkPaletteVars();
     }
     localStorage.setItem("theme", theme);
     document.body.classList.add("theme-transition");
@@ -103,9 +90,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const txtMain = isHome ? "text-white" : "text-foreground";
   const txtMuted = isHome ? "text-white/72" : "text-muted-foreground";
-  const badgeCls = isHome
-      ? "bg-white/10 border-white/15 text-white/80"
-      : "bg-white/70 dark:bg-card/70 border-border/70 text-muted-foreground shadow-sm";
   const linkActive = isHome ? "text-white" : "text-foreground";
   const linkInactive = isHome
       ? "text-white/70 hover:text-white"
@@ -130,8 +114,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(circle_at_top_left,rgba(233,169,59,0.17),transparent_36%),radial-gradient(circle_at_top_right,rgba(39,122,107,0.17),transparent_32%)]" />
-          <div className="absolute left-[-10rem] top-[24rem] h-[24rem] w-[24rem] rounded-full bg-primary/8 blur-3xl" />
-          <div className="absolute right-[-8rem] top-[40rem] h-[20rem] w-[20rem] rounded-full bg-secondary/10 blur-3xl" />
+          <div className="animate-ambient-drift absolute left-[-10rem] top-[24rem] h-[24rem] w-[24rem] rounded-full bg-primary/8 blur-3xl" />
+          <div className="animate-ambient-drift-delayed absolute right-[-8rem] top-[40rem] h-[20rem] w-[20rem] rounded-full bg-secondary/10 blur-3xl" />
         </div>
 
         <header
@@ -188,16 +172,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
 
-            <div
-                className={`hidden items-center gap-2 rounded-full border px-3.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-md backdrop-saturate-150 transition-all duration-300 md:flex ${badgeCls}`}
-                aria-hidden="true"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.22em]">
-              Official travel assistant
-            </span>
-            </div>
-
             <nav className="hidden items-center gap-1.5 rounded-full border border-transparent bg-transparent p-1 md:flex">
               {navLinks.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
@@ -215,6 +189,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </Link>
                 );
               })}
+
+              <Link
+                  href="/admin"
+                  title="Administrator sign-in — authorised department staff only. This is not a public registration portal."
+                  aria-label="Administrator sign-in for authorised department staff only"
+                  className={`group relative ml-1 inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition-all duration-200 ${
+                      isHome
+                          ? "border-white/20 bg-white/10 text-white hover:border-white/35 hover:bg-white/16"
+                          : "border-primary/20 bg-primary/8 text-primary hover:border-primary/35 hover:bg-primary/12"
+                  }`}
+              >
+                <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Admin sign-in</span>
+                <span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${isHome ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>Staff only</span>
+              </Link>
 
               <button
                   type="button"
@@ -242,14 +231,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              <DarkThemePicker
-                  theme={theme}
-                  triggerClassName={`group relative ml-1 flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
-                      isHome
-                          ? "border-white/10 text-white/75 hover:border-white/20 hover:bg-white/10 hover:text-white"
-                          : "border-border/70 bg-white/70 text-muted-foreground hover:border-border hover:bg-white hover:text-foreground dark:bg-card/70 dark:hover:bg-card"
-                  }`}
-              />
             </nav>
 
             <div className="flex items-center gap-2 md:hidden">
@@ -269,14 +250,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <Moon className="h-4 w-4" />
                 )}
               </button>
-              <DarkThemePicker
-                  theme={theme}
-                  triggerClassName={`flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
-                      isHome
-                          ? "border-white/15 text-white/75 hover:bg-white/10"
-                          : "border-border/70 bg-white/70 text-muted-foreground hover:bg-white dark:bg-card/70 dark:hover:bg-card"
-                  }`}
-              />
               <button
                   type="button"
                   onClick={() => setMobileOpen((v) => !v)}
@@ -333,6 +306,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                             </li>
                         );
                       })}
+                      <li className="mt-1 border-t border-border/70 pt-2">
+                        <Link
+                            href="/admin"
+                            title="Administrator sign-in — authorised department staff only"
+                            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-primary transition-all duration-200 hover:bg-primary/8"
+                        >
+                          <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+                          <span>Admin sign-in</span>
+                          <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide">Staff only</span>
+                        </Link>
+                      </li>
                     </ul>
                   </nav>
                 </motion.div>
@@ -349,17 +333,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <footer className="border-t border-border/70 bg-white/72 py-6 backdrop-blur-xl dark:bg-card/70">
           <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 text-[0.72rem] tracking-wide text-muted-foreground sm:flex-row">
           <div className="flex items-center gap-3">
-            <Link
-              href="/admin"
-              title="Admin portal — authorised staff only"
-              aria-label="Open the authorised staff admin portal"
-              className="group inline-flex h-8 items-center gap-2 rounded-full border border-border/80 bg-background/60 px-2.5 text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/8 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              <LockKeyhole className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:max-w-48 group-hover:opacity-100 group-focus-visible:max-w-48 group-focus-visible:opacity-100">
-                Admin portal
-              </span>
-            </Link>
             <span>
               © {new Date().getFullYear()} Tourism &amp; Civil
               Aviation Department, Government of Sikkim

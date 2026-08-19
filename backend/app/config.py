@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Gemini
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.6-flash"
 
     # Embedding model
     gemini_embedding_model: str = "models/gemini-embedding-001"
@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # Circular scraper
     circulars_allowed_host: str = "sikkimtourism.gov.in"
     circulars_notice_url: str = "https://sikkimtourism.gov.in/updates/notice"
+    circulars_tender_url: str = "https://sikkimtourism.gov.in/updates/tender"
     circulars_sync_interval_minutes: int = Field(default=45, ge=1, le=24 * 60)
     circulars_max_pdf_bytes: int = Field(default=15 * 1024 * 1024, ge=1)
     circulars_max_per_run: int = Field(default=20, ge=1, le=100)

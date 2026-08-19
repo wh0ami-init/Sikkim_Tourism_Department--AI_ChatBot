@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { DestinationCard } from "@/components/destination-card";
 import { DestinationDetailsDialog } from "@/components/destination-details-dialog";
 import { Link } from "wouter";
@@ -13,8 +13,14 @@ import {
   Landmark,
   AlertTriangle,
   CalendarDays,
+  Eye,
+  ExternalLink,
+  FileText,
+  Gavel,
+  Route,
+  X,
 } from "lucide-react";
-import { fetchAdvisories, fetchDestinations, type Advisory, type DestinationSummary } from "@/lib/api";
+import { advisoryFileUrl, fetchAdvisories, fetchDestinations, type Advisory, type DestinationSummary } from "@/lib/api";
 import { heroVideo } from "@/config/hero-media";
 
 const gridContainerVariants: Variants = {
@@ -70,11 +76,73 @@ const heroTaglines = [
   "Sikkim — India's First Fully Organic State",
 ];
 
+function AdvisoryList({
+  title, description, icon: Icon, advisories, onPreview, delay = 0,
+}: {
+  title: string;
+  description: string;
+  icon: typeof Route;
+  advisories: Advisory[];
+  onPreview: (advisory: Advisory) => void;
+  delay?: number;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  return (
+    <motion.section
+      className="overflow-hidden rounded-2xl border border-amber-700/10 bg-background/70 shadow-sm dark:bg-card/70"
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="flex items-start gap-3 border-b border-amber-700/10 bg-amber-100/35 p-4 dark:bg-amber-400/5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+        <div><h3 className="font-serif text-lg font-bold text-foreground">{title}</h3><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div>
+      </div>
+      <div className="max-h-[29rem] divide-y divide-amber-700/10 overflow-y-auto">
+        {advisories.map((advisory, index) => {
+          const documentUrl = advisory.has_file ? advisoryFileUrl(advisory.id) : advisory.source_url;
+          const canVisit = advisory.has_file || advisory.source_url.startsWith("https://sikkimtourism.gov.in/");
+          return <motion.article key={advisory.id} className={`interactive-lift relative overflow-hidden ${index === 0 ? "bg-amber-100/55 p-4 dark:bg-amber-400/10" : "p-4"}`} initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}>
+            {index === 0 && <motion.span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] origin-top bg-amber-600" initial={shouldReduceMotion ? false : { scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.55, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} />}
+            <div className="relative flex items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{advisory.issue_date}</p>{index === 0 && <motion.span className="inline-flex items-center gap-1.5 rounded-full bg-amber-700 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide text-white shadow-sm" initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.35, delay: 0.25, ease: "easeOut" }}><span className="h-1.5 w-1.5 rounded-full bg-amber-100" />Newly issued</motion.span>}</div>
+            <h4 className="relative mt-2 text-sm font-semibold leading-snug text-foreground">{advisory.title}</h4>
+            {advisory.district && <p className="relative mt-1 text-xs text-muted-foreground">{advisory.district} District</p>}
+            <div className="relative mt-3 flex flex-wrap gap-3 text-sm font-semibold text-primary">
+              {advisory.has_file && <button type="button" onClick={() => onPreview(advisory)} className="inline-flex items-center gap-1 hover:underline"><Eye className="h-3.5 w-3.5" />Preview</button>}
+              {canVisit && <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">Visit link<ExternalLink className="h-3.5 w-3.5" /></a>}
+            </div>
+          </motion.article>;
+        })}
+        {!advisories.length && <p className="p-5 text-sm text-muted-foreground">No updates are available at the moment.</p>}
+      </div>
+    </motion.section>
+  );
+}
+
+const advisoryCategoryLabels: Record<Advisory["category"], string> = {
+  road_status: "Road status",
+  cancellation_order: "Cancellation order",
+  tender: "Tender & bid",
+};
+
+function AdvisoryPreview({ advisory, onClose }: { advisory: Advisory; onClose: () => void }) {
+  return <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+    <section role="dialog" aria-modal="true" aria-labelledby="advisory-preview-title" className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] bg-card shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+      <header className="flex items-start justify-between gap-4 border-b border-border p-5"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{advisoryCategoryLabels[advisory.category]} · {advisory.issue_date}</p><h2 id="advisory-preview-title" className="mt-1 font-serif text-xl font-bold">{advisory.title}</h2></div><button type="button" onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close preview"><X className="h-5 w-5" /></button></header>
+      <iframe title={`Preview: ${advisory.title}`} src={advisoryFileUrl(advisory.id)} className="min-h-0 flex-1 bg-white" />
+    </section>
+  </div>;
+}
+
 export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [popularDestinations, setPopularDestinations] = useState<DestinationSummary[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [advisories, setAdvisories] = useState<Advisory[]>([]);
+  const [advisories, setAdvisories] = useState<Record<Advisory["category"], Advisory[]>>({
+    road_status: [], cancellation_order: [], tender: [],
+  });
+  const [previewingAdvisory, setPreviewingAdvisory] = useState<Advisory | null>(null);
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [taglineVisible, setTaglineVisible] = useState(true);
 
@@ -92,15 +160,19 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchAdvisories(controller.signal)
-        .then(setAdvisories)
-        .catch((err: unknown) => {
-          if (err instanceof Error && err.name === "AbortError") return;
-          // Advisories are an enhancement; the visitor site remains useful if
-          // the feed is temporarily unavailable.
-          console.error("Failed to load official advisories:", err);
-        });
-    return () => controller.abort();
+    const loadAdvisories = () => Promise.all([
+        fetchAdvisories("road_status", controller.signal),
+        fetchAdvisories("cancellation_order", controller.signal),
+        fetchAdvisories("tender", controller.signal),
+      ])
+          .then(([road_status, cancellation_order, tender]) => setAdvisories({ road_status, cancellation_order, tender }))
+          .catch((err: unknown) => {
+            if (err instanceof Error && err.name === "AbortError") return;
+            console.error("Failed to load official advisories:", err);
+          });
+    void loadAdvisories();
+    const refresh = window.setInterval(() => void loadAdvisories(), 5 * 60_000);
+    return () => { controller.abort(); window.clearInterval(refresh); };
   }, []);
 
   useEffect(() => {
@@ -243,44 +315,19 @@ export default function Home() {
           </div>
         </section>
 
-        {advisories.length > 0 && (
-          <section className="container mx-auto px-4 pt-10 sm:pt-14" aria-labelledby="official-advisories">
-            <div className="rounded-[2rem] border border-amber-300/45 bg-amber-50/75 p-5 shadow-[0_16px_40px_rgba(146,64,14,0.08)] backdrop-blur-xl dark:border-amber-400/20 dark:bg-amber-950/20 sm:p-7">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800/75 dark:text-amber-300/75">Official updates</p>
-                    <h2 id="official-advisories" className="font-serif text-xl font-bold text-foreground">Travel advisories and notices</h2>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">Check the issue date before travelling.</p>
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                {advisories.map((advisory) => {
-                  const officialSource = advisory.source_url.startsWith("https://sikkimtourism.gov.in/");
-                  return (
-                    <article key={advisory.id} className="rounded-2xl border border-amber-700/10 bg-background/70 p-4 dark:bg-card/70">
-                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-                        <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                        {advisory.issue_date} · {advisory.category.replace("_", " ")}
-                      </div>
-                      <h3 className="mt-2 font-semibold text-foreground">{advisory.title}</h3>
-                      {advisory.district && <p className="mt-1 text-sm text-muted-foreground">{advisory.district} District</p>}
-                      {officialSource && (
-                        <a href={advisory.source_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline">
-                          View official source
-                        </a>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
+        <section className="container mx-auto px-4 pt-10 sm:pt-14" aria-labelledby="official-advisories">
+          <div className="rounded-[2rem] border border-amber-300/45 bg-amber-50/75 p-5 shadow-[0_16px_40px_rgba(146,64,14,0.08)] backdrop-blur-xl dark:border-amber-400/20 dark:bg-amber-950/20 sm:p-7">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-300"><AlertTriangle className="h-5 w-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800/75 dark:text-amber-300/75">Official updates</p><h2 id="official-advisories" className="font-serif text-xl font-bold text-foreground">Travel advisories and notices</h2></div></div>
+              <p className="text-sm text-muted-foreground">Check the issue date before travelling.</p>
             </div>
-          </section>
-        )}
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <AdvisoryList title="Road Status" description="Department-managed road reports" icon={Route} advisories={advisories.road_status} onPreview={setPreviewingAdvisory} />
+              <AdvisoryList title="Cancellation Orders" description="Official tourism notices" icon={FileText} advisories={advisories.cancellation_order} onPreview={setPreviewingAdvisory} delay={0.1} />
+              <AdvisoryList title="Tenders & Bids" description="Official tender notices" icon={Gavel} advisories={advisories.tender} onPreview={setPreviewingAdvisory} delay={0.2} />
+            </div>
+          </div>
+        </section>
 
         <section className="container mx-auto px-4 py-14 sm:py-20">
           <div className="rounded-[2rem] border border-border/70 bg-white/72 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-card/72 sm:p-8 lg:p-10">
@@ -371,7 +418,8 @@ export default function Home() {
                 className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
                 variants={gridContainerVariants}
                 initial="hidden"
-                animate="show"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.15 }}
             >
               {popularDestinations.map((dest) => (
                   <motion.div key={dest.id} variants={gridItemVariants}>
@@ -385,11 +433,12 @@ export default function Home() {
           </div>
         </section>
 
-        <DestinationDetailsDialog
+      <DestinationDetailsDialog
             id={selectedId}
             open={selectedId !== null}
             onOpenChange={(open) => !open && setSelectedId(null)}
-        />
+      />
+      {previewingAdvisory && <AdvisoryPreview advisory={previewingAdvisory} onClose={() => setPreviewingAdvisory(null)} />}
       </div>
   );
 }

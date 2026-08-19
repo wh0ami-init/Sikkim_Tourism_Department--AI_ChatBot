@@ -147,7 +147,7 @@ class Circular(BaseModel):
     # (auto-increment in MySQL).
     id: int | None = None
     title: str
-    category: Literal["road_status", "cancellation_order", "notice"]
+    category: Literal["road_status", "cancellation_order", "tender"]
     district: str | None = None
     issue_date: str  # ISO date string (YYYY-MM-DD) — kept as str to avoid
     # timezone edge cases when round-tripping through JSON/MySQL DATE columns.
@@ -155,6 +155,13 @@ class Circular(BaseModel):
     pdf_hash: str  # sha256 of the PDF bytes — used to skip already-ingested files
     extracted_text: str
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Uploaded road-status files are retained so visitors can preview or
+    # download the original document. Excluding the payload keeps it out of
+    # every JSON list response and chat context.
+    stored_file: bytes | None = Field(default=None, exclude=True)
+    file_mime_type: str | None = None
+    file_name: str | None = None
+    has_file: bool = False
 
 
 class AdvisorySummary(BaseModel):
@@ -166,10 +173,11 @@ class AdvisorySummary(BaseModel):
 
     id: int
     title: str
-    category: Literal["road_status", "cancellation_order", "notice"]
+    category: Literal["road_status", "cancellation_order", "tender"]
     district: str | None = None
     issue_date: str
     source_url: str
+    has_file: bool = False
 
 
 # ── Travel Agency ────────────────────────────────────────────────────────

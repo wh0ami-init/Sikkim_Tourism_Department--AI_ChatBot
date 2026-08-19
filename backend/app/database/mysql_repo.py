@@ -60,6 +60,10 @@ def _row_to_circular(row: dict) -> Circular:
         pdf_hash=row["pdf_hash"],
         extracted_text=row["extracted_text"],
         ingested_at=row["ingested_at"],
+        stored_file=row.get("stored_file"),
+        file_mime_type=row.get("file_mime_type"),
+        file_name=row.get("file_name"),
+        has_file=bool(row.get("has_file", row.get("stored_file"))),
     )
 
 
@@ -287,7 +291,9 @@ class MySQLRepository(BaseRepository):
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = await asyncio.to_thread(
             self._query,
-            f"SELECT * FROM circulars {where} ORDER BY issue_date DESC LIMIT %s",
+            f"SELECT id, title, category, district, issue_date, source_url, pdf_hash, extracted_text, ingested_at, "
+            f"file_mime_type, file_name, file_content IS NOT NULL AS has_file "
+            f"FROM circulars {where} ORDER BY issue_date DESC LIMIT %s",
             (*params, limit),
         )
         return [_row_to_circular(r) for r in rows]
@@ -300,6 +306,17 @@ class MySQLRepository(BaseRepository):
         )
         return bool(rows)
 
+    async def refresh_circular_listing_metadata(
+            self, pdf_hash: str, title: str, category: str, source_url: str,
+    ) -> None:
+        """Repair metadata from the live official listing for an existing scrape."""
+        await asyncio.to_thread(
+            self._execute,
+            "UPDATE circulars SET title = %s, category = %s, source_url = %s "
+            "WHERE pdf_hash = %s AND source_url NOT LIKE 'manual-upload:%'",
+            (title[:300], category, source_url, pdf_hash),
+        )
+
     async def save_circular(self, circular: Circular) -> Circular:
         def _insert() -> int:
             conn = self._pool.get_connection()
@@ -308,8 +325,8 @@ class MySQLRepository(BaseRepository):
                 try:
                     cursor.execute(
                         "INSERT INTO circulars "
-                        "(title, category, district, issue_date, source_url, pdf_hash, extracted_text, ingested_at) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        "(title, category, district, issue_date, source_url, pdf_hash, extracted_text, ingested_at, file_content, file_mime_type, file_name) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                         (
                             circular.title,
                             circular.category,
@@ -319,6 +336,9 @@ class MySQLRepository(BaseRepository):
                             circular.pdf_hash,
                             circular.extracted_text,
                             circular.ingested_at,
+                            circular.stored_file,
+                            circular.file_mime_type,
+                            circular.file_name,
                         ),
                     )
                     return cursor.lastrowid
@@ -328,7 +348,17 @@ class MySQLRepository(BaseRepository):
                 conn.close()
 
         new_id = await asyncio.to_thread(_insert)
-        return circular.model_copy(update={"id": new_id})
+        return circular.model_copy(update={"id": new_id, "has_file": bool(circular.stored_file)})
+
+    async def get_circular_file(self, circular_id: int) -> Circular | None:
+        rows = await asyncio.to_thread(
+            self._query,
+            "SELECT id, title, category, district, issue_date, source_url, pdf_hash, extracted_text, ingested_at, "
+            "file_content AS stored_file, file_mime_type, file_name, file_content IS NOT NULL AS has_file "
+            "FROM circulars WHERE id = %s LIMIT 1",
+            (circular_id,),
+        )
+        return _row_to_circular(rows[0]) if rows else None
 
     async def delete_circular(self, circular_id: int) -> bool:
         deleted = await asyncio.to_thread(
