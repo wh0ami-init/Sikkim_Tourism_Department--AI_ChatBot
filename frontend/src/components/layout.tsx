@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { LockKeyhole, Map, MessageSquare, Sun, Moon, Menu, X } from "lucide-react";
+import { ArrowUpRight, ChevronRight, HeartHandshake, Leaf, LockKeyhole, Mail, Map, MapPin, Menu, MessageSquare, MountainSnow, Phone, Sun, Moon, X } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 import { GOVT_LOGO_SRC } from "@/config/brand";
 
@@ -22,7 +22,36 @@ function SikkimLogo({ className = "" }: { className?: string }) {
   );
 }
 
+function FooterLinks({ title, links }: { title: string; links: string[][] }) {
+  return <section><h2 className="text-sm font-bold uppercase tracking-[0.14em] text-[#123f36] dark:text-white">{title}</h2><ul className="mt-4 space-y-2.5">{links.map(([label, href]) => <li key={label}><a href={href} target="_blank" rel="noopener noreferrer" className="group inline-flex items-center gap-1.5 text-sm text-[#315d53]/80 transition-colors hover:text-amber-700 dark:text-white/70 dark:hover:text-amber-200"><ChevronRight className="h-3.5 w-3.5 text-amber-600/70 transition-transform group-hover:translate-x-0.5 dark:text-amber-300/70" aria-hidden="true" /><span>{label}</span><ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" /></a></li>)}</ul></section>;
+}
+
 type Theme = "light" | "dark";
+
+const footerInitiatives = [
+  { icon: Leaf, title: "Sustainable Tourism", detail: "Travel responsibly and help preserve Sikkim's natural beauty." },
+  { icon: HeartHandshake, title: "Respect Nature", detail: "Leave no trace and protect local ecosystems." },
+  { icon: MountainSnow, title: "Clean & Green Sikkim", detail: "Keep destinations clean for future generations." },
+];
+
+const footerImportantLinks = [
+  ["Apply RAP Online", "https://indianfrro.gov.in/"],
+  ["Sikkim Government", "https://sikkim.gov.in/"],
+  ["Taxi Fare", "https://www.sikkim.gov.in/uploads/Gazette/331_20251104.pdf"],
+  ["Transport Department", "https://transportdepartment.sikkim.gov.in/"],
+  ["Homestay Registration", "https://homestay.sikkimtourism.co.in/"],
+  ["RTI Online", "https://rtionline.sikkim.gov.in/"],
+  ["Grievance Redressal", "https://pgportal.gov.in/"],
+];
+
+const footerInformationLinks = [
+  ["Sikkim at a Glance", "https://sikkimtourism.gov.in/about/sikkim"],
+  ["How to Reach", "https://www.sikkim.gov.in/KnowSikkim/about-sikkim/how-to-reach-sikkim"],
+  ["Best Time to Visit", "https://sikkimtourism.gov.in/about/weather#best-time"],
+  ["Travel Guidelines", "https://sikkimtourism.gov.in/do-and-do-not"],
+  ["FAQs", "https://sikkimtourism.gov.in/"],
+  ["Do's & Don'ts", "https://sikkimtourism.gov.in/do-and-do-not"],
+];
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "light";
@@ -330,18 +359,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        <footer className="border-t border-border/70 bg-white/72 py-6 backdrop-blur-xl dark:bg-card/70">
-          <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 text-[0.72rem] tracking-wide text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-3">
-            <span>
-              © {new Date().getFullYear()} Tourism &amp; Civil
-              Aviation Department, Government of Sikkim
-            </span>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/8 px-3 py-1 text-[0.68rem] font-medium text-emerald-700 dark:text-emerald-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Information services available
-          </span>
+        <footer className="relative overflow-hidden bg-[#edf5f1] text-[#123f36] dark:bg-[#0b342d] dark:text-white">
+          <div aria-hidden="true" className="h-1.5 bg-gradient-to-r from-amber-400 via-emerald-300 to-teal-400" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(233,169,59,0.14),transparent_27%),radial-gradient(circle_at_8%_82%,rgba(58,169,144,0.15),transparent_28%)] dark:bg-[radial-gradient(circle_at_85%_15%,rgba(233,169,59,0.18),transparent_27%),radial-gradient(circle_at_8%_82%,rgba(58,169,144,0.2),transparent_28%)]" />
+          <div className="relative container mx-auto px-4 py-10 sm:px-6 lg:py-12">
+            <section className="grid gap-4 border-b border-[#123f36]/15 pb-8 sm:grid-cols-3 sm:gap-5 dark:border-white/15">
+              {footerInitiatives.map(({ icon: Icon, title, detail }, index) => <motion.article key={title} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }} className="flex gap-3 rounded-2xl border border-[#123f36]/10 bg-white/70 p-4 shadow-sm backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-white/5 dark:shadow-none"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 text-amber-700 dark:text-amber-200"><Icon className="h-5 w-5" aria-hidden="true" /></span><div><h2 className="text-sm font-bold text-[#123f36] dark:text-white">{title}</h2><p className="mt-1 text-xs leading-relaxed text-[#315d53]/75 dark:text-white/65">{detail}</p></div></motion.article>)}
+            </section>
+
+            <motion.div initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} transition={{ duration: 0.75, delay: 0.16, ease: [0.22, 1, 0.36, 1] }} className="grid gap-9 py-9 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.9fr_0.9fr_1.05fr] lg:gap-8">
+              <section className="sm:col-span-2 lg:col-span-1">
+                <div className="flex items-center gap-3"><img src={GOVT_LOGO_SRC} alt="Government of Sikkim emblem" className="h-14 w-14 rounded-full bg-white p-1.5 shadow-sm" /><div><p className="font-serif text-2xl font-bold tracking-tight">Sikkim Tourism Assistant</p><p className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-200">Where nature smiles</p></div></div>
+                <p className="mt-5 max-w-sm text-sm leading-6 text-[#315d53]/80 dark:text-white/70">The digital travel-information companion of the Tourism &amp; Civil Aviation Department, Government of Sikkim—helping visitors discover Sikkim with clarity and care.</p>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#315d53]/65 dark:text-white/55">Follow Us</p>
+                <div className="mt-2 flex gap-2"><a href="https://www.facebook.com/SikkimWhereNatureSmiles/" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on Facebook" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-xs font-bold transition hover:-translate-y-0.5">f</a><a href="https://x.com/TourismSikkim" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on X" className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold transition hover:-translate-y-0.5">X</a><a href="https://www.youtube.com/@sikkimtourismgos" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on YouTube" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF0000] text-xs font-bold transition hover:-translate-y-0.5">▶</a><a href="https://www.instagram.com/sikkim.tourism" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on Instagram" className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-xs font-bold transition hover:-translate-y-0.5">◎</a></div>
+              </section>
+
+              <FooterLinks title="Important Links" links={footerImportantLinks} />
+              <FooterLinks title="Information" links={footerInformationLinks} />
+
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-[#123f36] dark:text-white">Contact Us</h2>
+                <ul className="mt-5 space-y-4 text-sm text-[#315d53]/80 dark:text-white/70"><li className="flex gap-3"><span className="mt-0.5 text-amber-700 dark:text-amber-200"><Phone className="h-4 w-4" aria-hidden="true" /></span><div><a href="tel:+913592232218" className="font-semibold text-[#123f36] transition hover:text-amber-700 dark:text-white dark:hover:text-amber-200">(03592) 232218</a><p className="mt-1 text-xs text-[#315d53]/65 dark:text-white/55">Fax: (03592) 232216</p></div></li><li className="flex gap-3"><span className="mt-0.5 text-amber-700 dark:text-amber-200"><Mail className="h-4 w-4" aria-hidden="true" /></span><a href="mailto:sikkimtourismdept@zohomail.in" className="break-all font-semibold text-[#123f36] transition hover:text-amber-700 dark:text-white dark:hover:text-amber-200">sikkimtourismdept@zohomail.in</a></li><li className="flex gap-3"><span className="mt-0.5 text-amber-700 dark:text-amber-200"><MapPin className="h-4 w-4" aria-hidden="true" /></span><p>Tourism &amp; Civil Aviation Department,<br />Parayatan Bhawan, Tadong, Gangtok,<br />Sikkim – 737101</p></li></ul>
+              </section>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, amount: 0.12 }} transition={{ duration: 0.65, delay: 0.45 }} className="flex flex-col-reverse gap-5 border-t border-[#123f36]/15 pt-6 text-xs text-[#315d53]/65 sm:flex-row sm:items-center sm:justify-between dark:border-white/15 dark:text-white/55"><p>© {new Date().getFullYear()} Tourism &amp; Civil Aviation Department, Government of Sikkim. All rights reserved.</p><div className="flex items-center gap-3"><img src="/images/digital-india.png" alt="Digital India" className="h-8 w-auto object-contain opacity-85 transition-transform duration-300 hover:scale-105" /><img src="/images/statehood.png" alt="Sikkim Statehood" className="h-8 w-auto object-contain opacity-85 transition-transform duration-300 hover:scale-105" /><img src="/images/sikkim-inspires.png" alt="Sikkim Inspires" className="h-8 w-auto object-contain opacity-85 transition-transform duration-300 hover:scale-105" /></div></motion.div>
           </div>
         </footer>
 

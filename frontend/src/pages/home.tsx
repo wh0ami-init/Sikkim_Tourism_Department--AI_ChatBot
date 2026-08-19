@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
 import { DestinationCard } from "@/components/destination-card";
 import { DestinationDetailsDialog } from "@/components/destination-details-dialog";
 import { Link } from "wouter";
@@ -19,6 +19,9 @@ import {
   Gavel,
   Route,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Quote,
 } from "lucide-react";
 import { advisoryFileUrl, fetchAdvisories, fetchDestinations, type Advisory, type DestinationSummary } from "@/lib/api";
 import { heroVideo } from "@/config/hero-media";
@@ -70,11 +73,43 @@ const pillarItemVariants: Variants = {
   },
 };
 
-const heroTaglines = [
-  "Welcome to Sikkim",
-  "Sikkim — Where Every Peak Tells a Story",
-  "Sikkim — India's First Fully Organic State",
+const leadershipOfficials = [
+  { name: "Shri Om Prakash Mathur.", designation: "Hon'ble Governor", department: "Government of Sikkim", photo: "https://sikkimtourism.gov.in/images/leadership/governor-sikkim.jpeg", message: "We are building a tourism ecosystem that celebrates culture, empowers communities, and inspires every visitor." },
+  { name: "Shri Prem Singh Tamang", designation: "Hon'ble Chief Minister", department: "Government of Sikkim", photo: "https://sikkimtourism.gov.in/images/leadership/hcm.jpg", message: "Sikkim stands as a model of sustainable tourism — preserving nature while welcoming the world." },
+  { name: "Shri Tshering Thendup Bhutia", designation: "Minister", department: "Tourism & Civil Aviation Department, Government of Sikkim", photo: "https://sikkimtourism.gov.in/images/leadership/minister-tourism.jpg", message: "Our focus is on responsible growth, seamless services, and unforgettable Himalayan experiences." },
+  { name: "Shri Sudesh Kumar Subba", designation: "Advisor", department: "Tourism & Civil Aviation Department, Government of Sikkim", photo: "https://sikkimtourism.gov.in/images/leadership/advisor.jpg", message: "Together we are strengthening Sikkim's identity as a clean, green, and globally admired destination." },
 ];
+
+const heroTitles = [
+  "Welcome to Sikkim",
+  "Where Nature Smiles",
+  "A Himalayan Story, Unfolding",
+];
+
+function LeadershipSection() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeOfficial = leadershipOfficials[activeIndex];
+  const selectPrevious = () => setActiveIndex((current) => (current - 1 + leadershipOfficials.length) % leadershipOfficials.length);
+  const selectNext = () => setActiveIndex((current) => (current + 1) % leadershipOfficials.length);
+
+  useEffect(() => {
+    const interval = window.setInterval(selectNext, 8_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return <section className="container mx-auto px-4 py-14 sm:py-20" aria-labelledby="leadership-title">
+    <div className="relative border-y border-border/70 py-8 sm:py-10 lg:py-12">
+      <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={sectionHeaderVariants} className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-primary/80">Tourism &amp; Civil Aviation Department</p><h2 id="leadership-title" className="font-serif text-2xl font-bold text-foreground sm:text-3xl">Leadership &amp; Key Officials</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Meet the leaders supporting Sikkim’s vision for responsible, welcoming tourism.</p></div><div className="flex gap-2"><button type="button" onClick={selectPrevious} aria-label="Show previous official" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 text-foreground transition hover:border-primary/35 hover:text-primary"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={selectNext} aria-label="Show next official" className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:-translate-y-0.5"><ChevronRight className="h-4 w-4" /></button></div></motion.div>
+      <div className="relative mt-8 grid gap-7 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
+        <motion.div initial={{ opacity: 0, y: 32, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }} className="relative mx-auto w-full max-w-[18rem] sm:max-w-[20rem]"><div className="relative aspect-[3/4] overflow-hidden rounded-[1.5rem] border border-primary/20 bg-primary/10 shadow-[0_22px_52px_rgba(15,23,42,0.18)] dark:border-primary/25"><AnimatePresence mode="wait"><motion.img key={`backdrop-${activeOfficial.photo}`} src={activeOfficial.photo} alt="" aria-hidden="true" initial={{ opacity: 0, scale: 1.06 }} animate={{ opacity: 0.44, scale: 1.02 }} exit={{ opacity: 0, scale: 1.06 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0 h-full w-full scale-105 object-cover object-top blur-[2px]" /></AnimatePresence><div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,42,35,0.24),rgba(7,42,35,0.04)_55%,rgba(233,169,59,0.1))]" /><div className="absolute inset-x-5 top-5 bottom-20 overflow-hidden rounded-2xl border border-white/35 bg-white/10 shadow-[0_14px_30px_rgba(0,0,0,0.22)]"><AnimatePresence mode="wait"><motion.img key={activeOfficial.photo} src={activeOfficial.photo} alt={activeOfficial.name} initial={{ opacity: 0, scale: 1.035 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.985 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="h-full w-full object-cover object-top" /></AnimatePresence></div><div className="absolute bottom-4 left-4"><span className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-white backdrop-blur-md">Official leadership</span></div></div></motion.div>
+        <motion.div initial={{ opacity: 0, x: 34 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }} className="min-w-0" aria-live="polite"><AnimatePresence mode="wait"><motion.div key={activeOfficial.name} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">{activeOfficial.designation}</p><h3 className="mt-3 font-serif text-3xl font-bold leading-tight text-foreground sm:text-4xl">{activeOfficial.name}</h3><p className="mt-3 text-sm font-medium text-primary">{activeOfficial.department}</p><div className="mt-7 border-l-2 border-amber-400 pl-5"><Quote className="mb-3 h-6 w-6 text-amber-500/70" aria-hidden="true" /><p className="max-w-xl font-serif text-xl leading-relaxed text-foreground/90 sm:text-2xl">“{activeOfficial.message}”</p></div></motion.div></AnimatePresence></motion.div>
+      </div>
+      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.7, delay: 0.28, ease: [0.22, 1, 0.36, 1] }} className="relative mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">{leadershipOfficials.map((official, index) => <button key={official.name} type="button" onClick={() => setActiveIndex(index)} aria-current={index === activeIndex ? "true" : undefined} className={`group flex items-center gap-3 rounded-2xl border p-2.5 text-left transition-all ${index === activeIndex ? "border-primary/35 bg-primary/8 shadow-sm" : "border-border/70 bg-background/50 hover:border-primary/20 hover:bg-primary/5"}`}><img src={official.photo} alt="" className="h-11 w-11 rounded-xl object-cover object-top" /><span className="min-w-0"><span className="block truncate text-xs font-bold text-foreground">{official.name.replace("Shri ", "")}</span><span className="mt-0.5 block truncate text-[0.68rem] text-muted-foreground">{official.designation.replace("Hon'ble ", "")}</span></span></button>)}</motion.div>
+    </div>
+  </section>;
+}
 
 function AdvisoryList({
   title, description, icon: Icon, advisories, onPreview, delay = 0,
@@ -92,8 +127,8 @@ function AdvisoryList({
       className="overflow-hidden rounded-2xl border border-amber-700/10 bg-background/70 shadow-sm dark:bg-card/70"
       initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={{ duration: shouldReduceMotion ? 0 : 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, amount: 0.38 }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="flex items-start gap-3 border-b border-amber-700/10 bg-amber-100/35 p-4 dark:bg-amber-400/5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
@@ -103,13 +138,12 @@ function AdvisoryList({
         {advisories.map((advisory, index) => {
           const documentUrl = advisory.has_file ? advisoryFileUrl(advisory.id) : advisory.source_url;
           const canVisit = advisory.has_file || advisory.source_url.startsWith("https://sikkimtourism.gov.in/");
-          return <motion.article key={advisory.id} className={`interactive-lift relative overflow-hidden ${index === 0 ? "bg-amber-100/55 p-4 dark:bg-amber-400/10" : "p-4"}`} initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}>
-            {index === 0 && <motion.span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] origin-top bg-amber-600" initial={shouldReduceMotion ? false : { scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.55, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} />}
-            <div className="relative flex items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{advisory.issue_date}</p>{index === 0 && <motion.span className="inline-flex items-center gap-1.5 rounded-full bg-amber-700 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide text-white shadow-sm" initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.35, delay: 0.25, ease: "easeOut" }}><span className="h-1.5 w-1.5 rounded-full bg-amber-100" />Newly issued</motion.span>}</div>
+          return <motion.article key={advisory.id} className={`interactive-lift relative overflow-hidden ${index === 0 ? "border-l-2 border-amber-500 bg-amber-100/55 p-4 dark:bg-amber-400/10" : "p-4"}`} initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.65, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}>
+            <div className="relative flex items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{advisory.issue_date}</p>{index === 0 && <motion.span className="inline-flex items-center gap-1.5 rounded-full bg-amber-700 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide text-white shadow-sm" initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }} animate={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, boxShadow: ["0 1px 2px rgba(0,0,0,0.12)", "0 0 0 4px rgba(180,83,9,0.12)", "0 1px 2px rgba(0,0,0,0.12)"] }} transition={shouldReduceMotion ? { duration: 0 } : { opacity: { duration: 0.35, delay: 0.2, ease: "easeOut" }, y: { duration: 0.35, delay: 0.2, ease: "easeOut" }, boxShadow: { duration: 2.6, repeat: Infinity, repeatDelay: 3.2, ease: "easeInOut" } }}><motion.span className="h-1.5 w-1.5 rounded-full bg-amber-100" animate={shouldReduceMotion ? undefined : { scale: [1, 1.45, 1], opacity: [1, 0.5, 1] }} transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 3.2, ease: "easeInOut" }} />Latest</motion.span>}</div>
             <h4 className="relative mt-2 text-sm font-semibold leading-snug text-foreground">{advisory.title}</h4>
             {advisory.district && <p className="relative mt-1 text-xs text-muted-foreground">{advisory.district} District</p>}
             <div className="relative mt-3 flex flex-wrap gap-3 text-sm font-semibold text-primary">
-              {advisory.has_file && <button type="button" onClick={() => onPreview(advisory)} className="inline-flex items-center gap-1 hover:underline"><Eye className="h-3.5 w-3.5" />Preview</button>}
+              {advisory.has_file && advisory.category !== "road_status" && <button type="button" onClick={() => onPreview(advisory)} className="inline-flex items-center gap-1 hover:underline"><Eye className="h-3.5 w-3.5" />Preview</button>}
               {canVisit && <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">Visit link<ExternalLink className="h-3.5 w-3.5" /></a>}
             </div>
           </motion.article>;
@@ -143,8 +177,9 @@ export default function Home() {
     road_status: [], cancellation_order: [], tender: [],
   });
   const [previewingAdvisory, setPreviewingAdvisory] = useState<Advisory | null>(null);
-  const [taglineIndex, setTaglineIndex] = useState(0);
-  const [taglineVisible, setTaglineVisible] = useState(true);
+  const [heroTitleIndex, setHeroTitleIndex] = useState(0);
+  const [typedHeroTitle, setTypedHeroTitle] = useState("");
+  const [isErasingHeroTitle, setIsErasingHeroTitle] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -157,6 +192,36 @@ export default function Home() {
         });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const title = heroTitles[heroTitleIndex];
+    let delay = 60;
+
+    if (!isErasingHeroTitle && typedHeroTitle.length < title.length) {
+      delay = heroTitleIndex === 0 ? 88 : 58;
+    } else if (!isErasingHeroTitle) {
+      delay = heroTitleIndex === 0 ? 6_000 : 3_000;
+    } else if (typedHeroTitle.length > 0) {
+      delay = 32;
+    } else {
+      delay = 3_000;
+    }
+
+    const timeout = window.setTimeout(() => {
+      if (!isErasingHeroTitle && typedHeroTitle.length < title.length) {
+        setTypedHeroTitle(title.slice(0, typedHeroTitle.length + 1));
+      } else if (!isErasingHeroTitle) {
+        setIsErasingHeroTitle(true);
+      } else if (typedHeroTitle.length > 0) {
+        setTypedHeroTitle(title.slice(0, typedHeroTitle.length - 1));
+      } else {
+        setIsErasingHeroTitle(false);
+        setHeroTitleIndex((current) => (current + 1) % heroTitles.length);
+      }
+    }, delay);
+
+    return () => window.clearTimeout(timeout);
+  }, [heroTitleIndex, isErasingHeroTitle, typedHeroTitle]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -175,17 +240,6 @@ export default function Home() {
     return () => { controller.abort(); window.clearInterval(refresh); };
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTaglineVisible(false);
-      setTimeout(() => {
-        setTaglineIndex((i) => (i + 1) % heroTaglines.length);
-        setTaglineVisible(true);
-      }, 600);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
   const highlights = [
     {
       icon: Leaf,
@@ -200,7 +254,7 @@ export default function Home() {
     {
       icon: Landmark,
       value: "200+",
-      label: "Monasteries & Sacred Sites",
+      label: "Sacred Sites",
     },
   ];
 
@@ -238,55 +292,26 @@ export default function Home() {
             >
               <source src={heroVideo.src} type="video/mp4" />
             </video>
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,21,18,0.18)_0%,rgba(5,21,18,0.52)_26%,rgba(5,21,18,0.72)_65%,rgba(244,248,246,0.96)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,21,18,0.08)_0%,rgba(5,21,18,0.28)_32%,rgba(5,21,18,0.48)_70%,rgba(244,248,246,0.9)_100%)] dark:bg-[linear-gradient(180deg,rgba(5,21,18,0.08)_0%,rgba(5,21,18,0.32)_32%,rgba(5,21,18,0.6)_70%,rgba(13,28,24,0.94)_100%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(233,169,59,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(39,122,107,0.28),transparent_34%)]" />
           </div>
 
           <div className="relative container mx-auto flex min-h-[78vh] flex-1 flex-col items-center justify-between px-4 pb-6 pt-24 text-center sm:min-h-screen sm:pb-10 sm:pt-28">
             <div className="flex w-full flex-1 flex-col items-center justify-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/16 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/90 backdrop-blur-md animate-rise-fade">
-                <MountainSnow className="h-3.5 w-3.5" />
-                Government of Sikkim &middot; Tourism &amp; Civil Aviation Dept.
-              </div>
-
               <div className="mt-6 max-w-5xl px-4 sm:px-6">
-                <h1
-                    key={taglineIndex}
-                    className={`mx-auto max-w-4xl font-serif text-4xl font-bold leading-[1.05] tracking-tight text-white [text-shadow:0_4px_28px_rgba(0,0,0,0.45)] sm:text-6xl ${
-                        taglineVisible ? "animate-rise-fade" : "animate-fade-out-rise"
-                    }`}
-                    style={
-                      taglineIndex === 0 ? { animationDelay: "100ms" } : undefined
-                    }
-                >
-                  {heroTaglines[taglineIndex]}
-                </h1>
-
-                <p
-                    className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/90 [text-shadow:0_2px_16px_rgba(0,0,0,0.4)] animate-rise-fade sm:text-xl"
-                    style={{ animationDelay: "220ms" }}
-                >
-                  Where snow peaks meet prayer flags, monasteries keep centuries
-                  of silence, and every valley has a story. Ask our assistant
-                  about permits, routes, and the best time to visit — anytime.
-                </p>
+                <h1 aria-label={heroTitles[heroTitleIndex]} className="relative mx-auto min-h-[2.2em] max-w-4xl font-serif text-4xl font-semibold leading-[1.08] tracking-[0.01em] text-white [text-shadow:0_4px_28px_rgba(0,0,0,0.45)] animate-rise-fade sm:text-6xl" style={{ animationDelay: "120ms" }}><span>{typedHeroTitle}</span><span aria-hidden="true" className="ml-1 inline-block h-[0.9em] w-px translate-y-[0.08em] bg-amber-200 animate-pulse" />{heroTitleIndex === 0 && !isErasingHeroTitle && typedHeroTitle === heroTitles[0] && <motion.span aria-hidden="true" initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="absolute bottom-[0.1em] left-1/2 h-px w-28 -translate-x-1/2 origin-center bg-gradient-to-r from-transparent via-amber-200 to-transparent sm:w-40" />}</h1>
 
                 <div
                     className="mt-8 flex flex-wrap items-center justify-center gap-3 animate-rise-fade"
                     style={{ animationDelay: "340ms" }}
                 >
-                  <Link
-                      href="/destinations"
-                      className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_16px_40px_rgba(39,122,107,0.32)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_46px_rgba(39,122,107,0.38)]"
-                  >
-                    Explore destinations <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <span className="inline-flex items-center rounded-full border border-white/20 px-4 py-3 text-sm text-white/90 [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
-                  Or click the chat icon to ask a question
-                </span>
+                  <Link href="/destinations" aria-label="Explore destinations" title="Explore destinations" className="group inline-flex h-12 w-12 items-center justify-end overflow-hidden rounded-full bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(39,122,107,0.32)] transition-[width,transform,box-shadow] duration-500 ease-out hover:w-52 hover:-translate-y-0.5 hover:shadow-[0_20px_46px_rgba(39,122,107,0.38)] focus-visible:w-52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"><span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-300 group-hover:max-w-36 group-hover:opacity-100 group-focus-visible:max-w-36 group-focus-visible:opacity-100">Explore destinations</span><span className="flex h-12 w-12 shrink-0 items-center justify-center"><ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" /></span></Link>
                 </div>
+                <p className="mt-5 text-xs font-medium text-white/75 [text-shadow:0_2px_10px_rgba(0,0,0,0.4)] animate-rise-fade sm:hidden" style={{ animationDelay: "420ms" }}>Need route or permit help? Use the chat icon below.</p>
               </div>
             </div>
+
+            <div className="absolute right-6 top-28 hidden items-center gap-2 rounded-full border border-white/18 bg-black/20 px-4 py-2 text-xs font-medium text-white/85 backdrop-blur-md animate-rise-fade lg:flex" style={{ animationDelay: "560ms" }}><Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />Need route or permit help? Use the chat icon.</div>
 
             <div
                 className="flex w-full max-w-4xl flex-col items-center gap-5 border-t border-white/12 pt-6 text-white animate-rise-fade sm:flex-row sm:items-start sm:justify-center sm:gap-0 sm:pt-8 sm:divide-x sm:divide-white/12"
@@ -316,7 +341,7 @@ export default function Home() {
         </section>
 
         <section className="container mx-auto px-4 pt-10 sm:pt-14" aria-labelledby="official-advisories">
-          <div className="rounded-[2rem] border border-amber-300/45 bg-amber-50/75 p-5 shadow-[0_16px_40px_rgba(146,64,14,0.08)] backdrop-blur-xl dark:border-amber-400/20 dark:bg-amber-950/20 sm:p-7">
+          <div className="border-y border-amber-300/55 py-6 dark:border-amber-400/25 sm:py-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-800 dark:text-amber-300"><AlertTriangle className="h-5 w-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800/75 dark:text-amber-300/75">Official updates</p><h2 id="official-advisories" className="font-serif text-xl font-bold text-foreground">Travel advisories and notices</h2></div></div>
               <p className="text-sm text-muted-foreground">Check the issue date before travelling.</p>
@@ -329,8 +354,10 @@ export default function Home() {
           </div>
         </section>
 
+        <LeadershipSection />
+
         <section className="container mx-auto px-4 py-14 sm:py-20">
-          <div className="rounded-[2rem] border border-border/70 bg-white/72 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-card/72 sm:p-8 lg:p-10">
+          <div className="border-y border-border/70 py-8 sm:py-10">
             <motion.div
                 className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
                 variants={sectionHeaderVariants}
@@ -360,11 +387,11 @@ export default function Home() {
                 whileInView="show"
                 viewport={{ once: true, amount: 0.2 }}
             >
-              {pillars.map((p) => (
+              {pillars.map((p, index) => (
                   <motion.div
                       key={p.title}
                       variants={pillarItemVariants}
-                      className="rounded-[1.6rem] border border-border/70 bg-gradient-to-b from-white to-white/70 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(39,122,107,0.12)] dark:from-card dark:to-card/80"
+                      className={`p-4 transition-transform duration-300 hover:-translate-y-1 sm:px-6 ${index > 0 ? "border-t border-border/70 pt-8 sm:border-l sm:border-t-0 sm:pt-4" : ""}`}
                   >
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10">
                       <p.icon className="h-5.5 w-5.5" />
@@ -382,7 +409,7 @@ export default function Home() {
         </section>
 
         <section className="container mx-auto px-4 pb-20">
-          <div className="rounded-[2rem] border border-border/70 bg-white/72 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-card/72 sm:p-8">
+          <div className="border-y border-border/70 py-8 sm:py-10">
             <motion.div
                 className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 variants={sectionHeaderVariants}

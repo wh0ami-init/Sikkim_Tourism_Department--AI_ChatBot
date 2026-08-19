@@ -106,7 +106,7 @@ export default function Destinations() {
               </p>
             </div>
 
-            <div className="mx-auto mt-10 max-w-5xl rounded-[var(--radius-panel)] border border-border/70 bg-white/78 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl animate-rise-fade dark:bg-white/[0.06] dark:border-white/10 sm:p-5" style={{ animationDelay: "240ms" }}>
+            <div className="mx-auto mt-10 max-w-5xl border-y border-border/70 py-5 animate-rise-fade dark:border-white/10" style={{ animationDelay: "240ms" }}>
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground dark:text-white/50" />
@@ -139,7 +139,7 @@ export default function Destinations() {
         </div>
 
         <div className="container mx-auto flex flex-1 px-4 py-8">
-          <div className="w-full rounded-[var(--radius-panel)] border border-border/70 bg-white/72 p-6 shadow-[0_22px_56px_rgba(15,23,42,0.06)] backdrop-blur-xl dark:bg-card/72 sm:p-8">
+          <div className="w-full border-y border-border/70 py-8 dark:border-white/10 sm:py-10">
             {!isLoading && (
                 <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground animate-rise-fade">

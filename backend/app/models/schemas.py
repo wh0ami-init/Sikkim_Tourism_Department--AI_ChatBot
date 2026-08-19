@@ -101,7 +101,7 @@ class DestinationWrite(BaseModel):
     @field_validator("image_url")
     @classmethod
     def validate_image_url(cls, value: str | None) -> str | None:
-        """Permit only local destination images covered by the frontend CSP."""
+        """Permit local images and HTTPS images from the configured Cloudinary host."""
         if value is None:
             return None
         value = value.strip()
@@ -109,7 +109,9 @@ class DestinationWrite(BaseModel):
             return None
         if re.fullmatch(r"/images/[A-Za-z0-9][A-Za-z0-9._-]*", value):
             return value
-        raise ValueError("image_url must be a local /images/ filename.")
+        if re.fullmatch(r"https://res\.cloudinary\.com/[A-Za-z0-9_-]+/image/upload/[A-Za-z0-9_.,/-]+", value):
+            return value
+        raise ValueError("image_url must be a local /images/ filename or a HTTPS Cloudinary image URL.")
 
 
 class DestinationSummary(BaseModel):

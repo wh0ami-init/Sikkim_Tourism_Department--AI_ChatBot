@@ -241,7 +241,7 @@ def _content_security_policy(path: str) -> str:
         "base-uri 'self'; "
         "frame-ancestors 'none'; "
         "form-action 'self'; "
-        "img-src 'self' data:; "
+        "img-src 'self' data: https://res.cloudinary.com; "
         "style-src 'self' 'unsafe-inline'; "
         "script-src 'self'; "
         "connect-src 'self' https://api.open-meteo.com"
