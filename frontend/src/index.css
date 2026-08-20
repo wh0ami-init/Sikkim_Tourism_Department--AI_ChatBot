@@ -215,10 +215,14 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     background-image:
-      radial-gradient(circle at top left, rgba(233, 169, 59, 0.12), transparent 24%),
-      radial-gradient(circle at top right, rgba(39, 122, 107, 0.14), transparent 28%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+      radial-gradient(62rem 36rem at -8% -12%, rgba(233, 169, 59, 0.14), transparent 58%),
+      radial-gradient(56rem 34rem at 108% 3%, rgba(57, 121, 156, 0.12), transparent 57%),
+      radial-gradient(48rem 32rem at 48% 108%, rgba(39, 122, 107, 0.10), transparent 60%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.68), rgba(241, 248, 246, 0.38));
+    background-size: 145% 145%, 150% 150%, 150% 150%, 100% 100%;
+    background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%;
     background-attachment: fixed;
+    animation: site-aurora-drift 18s ease-in-out infinite alternate;
     min-height: 100vh;
   }
 
@@ -241,9 +245,10 @@
 
   .dark body {
     background-image:
-            radial-gradient(circle at top left, rgba(233, 169, 59, 0.05), transparent 24%),
-            radial-gradient(circle at top right, rgba(39, 122, 107, 0.08), transparent 28%),
-            linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
+            radial-gradient(58rem 34rem at -8% -12%, rgba(201, 143, 45, 0.10), transparent 56%),
+            radial-gradient(54rem 34rem at 108% 3%, rgba(32, 104, 140, 0.13), transparent 56%),
+            radial-gradient(46rem 30rem at 48% 108%, rgba(28, 118, 93, 0.12), transparent 58%),
+            linear-gradient(145deg, rgba(4, 18, 21, 0.7), rgba(8, 28, 29, 0.5));
   }
 
   .dark body::before {
@@ -253,6 +258,12 @@
     opacity: 0.5;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    body {
+      animation: none;
+    }
+  }
+
   h1,
   h2,
   h3,
@@ -260,6 +271,18 @@
   h5,
   h6 {
     @apply font-serif;
+  }
+}
+
+@keyframes site-aurora-drift {
+  0% {
+    background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%;
+  }
+  50% {
+    background-position: 35% 18%, 62% 22%, 35% 70%, 0% 0%;
+  }
+  100% {
+    background-position: 75% 42%, 15% 48%, 68% 22%, 0% 0%;
   }
 }
 
