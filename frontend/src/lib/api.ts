@@ -11,6 +11,7 @@
  */
 
 const BASE = "/api";
+export const ADMIN_SESSION_MARKER = "__http_only_admin_session__";
 
 export function encodeBasicCredentials(username: string, password: string): string {
   const bytes = new TextEncoder().encode(`${username}:${password}`);
@@ -25,6 +26,7 @@ export function encodeBasicCredentials(username: string, password: string): stri
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
+    credentials: "same-origin",
     // Keep JSON content type when a call also supplies an auth header.
     // (The old order let `options.headers` replace this entire object.)
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -54,7 +56,10 @@ async function adminFetch<T>(
 ): Promise<T> {
   return apiFetch<T>(`/admin${path}`, {
     ...options,
-    headers: { Authorization: `Basic ${encodedCredentials}`, ...options?.headers },
+    headers: {
+      ...(encodedCredentials === ADMIN_SESSION_MARKER ? {} : { Authorization: `Basic ${encodedCredentials}` }),
+      ...options?.headers,
+    },
   });
 }
 
@@ -63,6 +68,14 @@ export interface AdminAuthResult { status: string }
 
 export function getAdminAuthStatus(): Promise<AdminAuthStatus> {
   return apiFetch<AdminAuthStatus>("/admin/auth/status");
+}
+
+export function getAdminSession(): Promise<{ status: string; username: string }> {
+  return apiFetch("/admin/auth/session");
+}
+
+export function logoutAdmin(): Promise<AdminAuthResult> {
+  return apiFetch("/admin/auth/logout", { method: "POST" });
 }
 
 export function loginAdmin(username: string, password: string): Promise<AdminAuthResult> {

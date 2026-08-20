@@ -10,6 +10,7 @@ import { Link, useLocation } from "wouter";
 import { ArrowUpRight, ChevronRight, HeartHandshake, Leaf, LockKeyhole, Mail, Map, MapPin, Menu, MessageSquare, MountainSnow, Phone, Sun, Moon, X } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 import { GOVT_LOGO_SRC } from "@/config/brand";
+import { getAdminSession } from "@/lib/api";
 
 function SikkimLogo({ className = "" }: { className?: string }) {
   return (
@@ -67,6 +68,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [adminName, setAdminName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refreshAdminSession = () => {
+      getAdminSession().then((session) => setAdminName(session.username)).catch(() => setAdminName(null));
+    };
+    refreshAdminSession();
+    window.addEventListener("admin-session-changed", refreshAdminSession);
+    return () => window.removeEventListener("admin-session-changed", refreshAdminSession);
+  }, []);
 
   /* Apply theme class + persist. Brief body-level transition keeps the
      cross-fade gentle while 30 surfaces re-paint. */
@@ -221,8 +232,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
               <Link
                   href="/admin"
-                  title="Administrator sign-in — authorised department staff only. This is not a public registration portal."
-                  aria-label="Administrator sign-in for authorised department staff only"
+                  title={adminName ? `Open the operations console for ${adminName}` : "Administrator sign-in — authorised department staff only. This is not a public registration portal."}
+                  aria-label={adminName ? `Open operations console for ${adminName}` : "Administrator sign-in for authorised department staff only"}
                   className={`group relative ml-1 inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition-all duration-200 ${
                       isHome
                           ? "border-white/20 bg-white/10 text-white hover:border-white/35 hover:bg-white/16"
@@ -230,8 +241,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   }`}
               >
                 <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Admin sign-in</span>
-                <span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${isHome ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>Staff only</span>
+                <span className="max-w-32 truncate">{adminName ? `Hi, ${adminName}` : "Admin sign-in"}</span>
+                <span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${isHome ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>{adminName ? "Console" : "Staff only"}</span>
               </Link>
 
               <button
@@ -338,12 +349,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <li className="mt-1 border-t border-border/70 pt-2">
                         <Link
                             href="/admin"
-                            title="Administrator sign-in — authorised department staff only"
+                            title={adminName ? `Open the operations console for ${adminName}` : "Administrator sign-in — authorised department staff only"}
                             className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-primary transition-all duration-200 hover:bg-primary/8"
                         >
                           <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-                          <span>Admin sign-in</span>
-                          <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide">Staff only</span>
+                          <span>{adminName ? `Hi, ${adminName}` : "Admin sign-in"}</span>
+                          <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide">{adminName ? "Console" : "Staff only"}</span>
                         </Link>
                       </li>
                     </ul>

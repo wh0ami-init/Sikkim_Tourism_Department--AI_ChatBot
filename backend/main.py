@@ -15,7 +15,7 @@ import logging
 from contextlib import asynccontextmanager, suppress
 
 import uvicorn
-from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -29,6 +29,7 @@ from app.routers import chat, destinations
 from app.startup import resync_vectorstore, populate_vectorstore
 from app.models.schemas import AdminCredentials, AdminCredentialsChange, AdminUser, Destination, DestinationWrite
 from app.services.admin_auth import hash_password, validate_password, verify_password
+from app.services.admin_session import SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS, issue_admin_session
 
 # Logging
 logging.basicConfig(
@@ -36,6 +37,18 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _set_admin_session(response: Response, username: str) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=issue_admin_session(username),
+        max_age=SESSION_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=settings.environment == "production",
+        samesite="strict",
+        path="/api/admin",
+    )
 
 
 class RequestBodyTooLarge(Exception):
@@ -344,6 +357,7 @@ async def admin_auth_status(request: Request, repo=Depends(get_repo)):
 @limiter.limit("5/minute")
 async def setup_first_admin(
         request: Request,
+        response: Response,
         credentials: AdminCredentials,
         repo=Depends(get_repo),
         _=Depends(verify_admin_key),
@@ -371,6 +385,7 @@ async def setup_first_admin(
             status_code=409,
             detail="Admin setup is no longer available.",
         ) from exc
+    _set_admin_session(response, credentials.username)
     return {"status": "ok"}
 
 
@@ -378,6 +393,7 @@ async def setup_first_admin(
 @limiter.limit("10/minute")
 async def admin_login(
         request: Request,
+        response: Response,
         credentials: AdminCredentials,
         repo=Depends(get_repo),
 ):
@@ -386,6 +402,19 @@ async def admin_login(
     password_hash = user.password_hash if user is not None else _DUMMY_PASSWORD_HASH
     if not verify_password(credentials.password, password_hash) or user is None:
         raise HTTPException(status_code=401, detail="Incorrect username or password.")
+    _set_admin_session(response, user.username)
+    return {"status": "ok"}
+
+
+@admin_auth_router.get("/session")
+async def admin_session_status(username: str = Depends(verify_admin_credentials)):
+    """Confirm an existing HTTP-only admin session without exposing credentials."""
+    return {"status": "ok", "username": username}
+
+
+@admin_auth_router.post("/logout")
+async def admin_logout(response: Response):
+    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/api/admin", httponly=True, secure=settings.environment == "production", samesite="strict")
     return {"status": "ok"}
 
 

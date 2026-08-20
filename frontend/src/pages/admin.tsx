@@ -8,7 +8,7 @@ import {
   type AdminDashboard, type AdminDestination, type Circular, type DestinationWrite,
   deleteAdminCircular, deleteAdminDestination, fetchAdminCirculars,
   fetchAdminDashboard, fetchAdminDestinations, getAdminAuthStatus, loginAdmin,
-  runAdminSync, saveAdminDestination, setupAdmin, encodeBasicCredentials,
+  runAdminSync, saveAdminDestination, setupAdmin, getAdminSession, logoutAdmin, ADMIN_SESSION_MARKER,
 } from "@/lib/api";
 
 const CATEGORIES = ["nature", "culture", "adventure", "pilgrimage", "wildlife"];
@@ -35,8 +35,8 @@ const adminAccessSlides = [
 ];
 
 export default function Admin() {
-  // Credentials stay only in React memory. Closing or refreshing the tab
-  // requires the administrator to enter them again; nothing is persisted.
+  // The browser stores only an HTTP-only signed session cookie. Passwords
+  // never enter localStorage, sessionStorage, or JavaScript-accessible state.
   const [key, setKey] = useState("");
   const [usernameDraft, setUsernameDraft] = useState("");
   const [passwordDraft, setPasswordDraft] = useState("");
@@ -75,20 +75,28 @@ export default function Admin() {
     getAdminAuthStatus()
       .then((status) => setSetupRequired(status.setup_required))
       .catch(() => setError("The admin sign-in service is unavailable. Please try again."));
+    getAdminSession().then(() => setKey(ADMIN_SESSION_MARKER)).catch(() => undefined);
   }, []);
 
-  const load = async () => {
+  const load = async (retryAttempt = 0) => {
     if (!key) return;
     setLoading(true); setError(null);
     try {
-      const [summary, destinationRows, circularRows] = await Promise.all([
-        fetchAdminDashboard(key), fetchAdminDestinations(key), fetchAdminCirculars(key),
-      ]);
+      // Load in order: a cold local MySQL pool can reject simultaneous first
+      // connections, while these small operations complete quickly in sequence.
+      const summary = await fetchAdminDashboard(key);
+      const destinationRows = await fetchAdminDestinations(key);
+      const circularRows = await fetchAdminCirculars(key);
       setDashboard(summary); setDestinations(destinationRows); setCirculars(circularRows);
       if (!hasCompletedInitialLoad) { setHasCompletedInitialLoad(true); setShowReady(true); }
     } catch (err) {
-      setError(errorMessage(err));
-      if (String(err).includes("401")) setKey("");
+      if (String(err).includes("401")) {
+        setKey("");
+      } else if (retryAttempt === 0) {
+        window.setTimeout(() => { void load(1); }, 650);
+      } else {
+        setError(errorMessage(err));
+      }
     } finally { setLoading(false); }
   };
 
@@ -114,7 +122,8 @@ export default function Admin() {
       await (setupRequired
         ? await setupAdmin(username, passwordDraft, setupKeyDraft)
         : await loginAdmin(username, passwordDraft));
-      setKey(encodeBasicCredentials(username, passwordDraft));
+      setKey(ADMIN_SESSION_MARKER);
+      window.dispatchEvent(new Event("admin-session-changed"));
       setPasswordDraft(""); setConfirmPasswordDraft(""); setSetupKeyDraft("");
       if (setupRequired) setSetupRequired(false);
     } catch (err) {
@@ -122,6 +131,10 @@ export default function Admin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const logout = async () => {
+    try { await logoutAdmin(); } finally { setKey(""); setDashboard(null); setDestinations([]); setCirculars([]); window.dispatchEvent(new Event("admin-session-changed")); }
   };
 
   const openEditor = (destination: AdminDestination | "new") => {
@@ -166,7 +179,7 @@ export default function Admin() {
     setLoading(true); setProcessingUpload(true); setError(null);
     try {
       const body = new FormData(); body.append("file", upload.file); body.append("title", upload.title); body.append("category", upload.category); if (upload.district) body.append("district", upload.district);
-      const response = await fetch("/api/admin/upload-circular", { method: "POST", headers: { Authorization: `Basic ${key}` }, body });
+      const response = await fetch("/api/admin/upload-circular", { method: "POST", credentials: "same-origin", headers: key === ADMIN_SESSION_MARKER ? {} : { Authorization: `Basic ${key}` }, body });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail ?? "Upload failed.");
       const uploadedTitle = upload.title;
       clearSelectedFile(); setUpload({ file: null, title: "", category: "road_status", district: "" }); setNotice(`${uploadedTitle} uploaded and processed successfully.`); await load();
@@ -197,7 +210,7 @@ export default function Admin() {
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,25,21,0.08)_0%,rgba(6,25,21,0.38)_45%,rgba(6,25,21,0.88)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(233,169,59,0.28),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(39,122,107,0.32),transparent_42%)]" />
       <div className="relative flex h-full flex-col justify-between p-6 text-white sm:p-8 lg:p-10">
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] backdrop-blur-md"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />Secure department workspace</div>
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 bg-slate-950/75 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-amber-100 shadow-[0_6px_18px_rgba(0,0,0,0.28)] backdrop-blur-md"><ShieldCheck className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />Secure department workspace</div>
         <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/65">Tourism &amp; Civil Aviation</p><h2 className="mt-2 max-w-sm font-serif text-3xl font-bold leading-tight sm:text-4xl">Supporting official travel information for Sikkim.</h2><div className="mt-6 flex items-end justify-between gap-4"><div><p className="text-sm font-semibold">{adminAccessSlides[accessSlide].title}</p><p className="mt-0.5 text-xs text-white/70">{adminAccessSlides[accessSlide].detail}</p></div><div className="flex gap-1.5" aria-label={`Slide ${accessSlide + 1} of ${adminAccessSlides.length}`}>{adminAccessSlides.map((slide, index) => <button key={slide.image} type="button" onClick={() => setAccessSlide(index)} aria-label={`Show ${slide.title}`} className={`h-1.5 rounded-full transition-all ${index === accessSlide ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/75"}`} />)}</div></div></div>
       </div>
     </aside>
@@ -209,13 +222,13 @@ export default function Admin() {
       <label className="mt-4 block text-sm font-semibold">Password<input required type="password" value={passwordDraft} onChange={(event) => setPasswordDraft(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 outline-none ring-primary transition-shadow focus:ring-2" placeholder={setupRequired ? "At least 12 characters" : "Enter your password"} autoComplete={setupRequired ? "new-password" : "current-password"} aria-describedby={setupRequired ? "password-requirements" : undefined} /></label>
       {setupRequired && <><ul id="password-requirements" className="mt-2 space-y-1 text-xs" aria-live="polite">{passwordRequirements(passwordDraft).map(({ label, met }) => <li key={label} className={met ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}>{met ? "✓" : "○"} {label}</li>)}</ul><label className="mt-4 block text-sm font-semibold">Confirm password<input required type="password" value={confirmPasswordDraft} onChange={(event) => setConfirmPasswordDraft(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 outline-none ring-primary transition-shadow focus:ring-2" autoComplete="new-password" /></label><label className="mt-4 block text-sm font-semibold">One-time setup key<input required type="password" value={setupKeyDraft} onChange={(event) => setSetupKeyDraft(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 outline-none ring-primary transition-shadow focus:ring-2" placeholder="ADMIN_API_KEY" autoComplete="off" /></label></>}
       <button disabled={loading || setupRequired === null} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-primary-foreground shadow-[0_10px_22px_rgba(39,122,107,0.2)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(39,122,107,0.28)] disabled:cursor-not-allowed disabled:opacity-50"><KeyRound className="h-4 w-4" />{loading ? "Please wait…" : setupRequired ? "Register first administrator" : "Sign in securely"}</button>
-      <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />Credentials are checked securely and are never saved in this browser.</p>
+      <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />Your secure session stays active on this browser until you select Logout.</p>
     </motion.form>
   </motion.section></main>;
 
   if (loading && !hasCompletedInitialLoad) return <AdminLoadingScreen />;
 
-  return <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8"><div className="mx-auto max-w-7xl"><section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#103e35,#247969_55%,#cf8f2f)] p-6 text-white shadow-2xl sm:p-10"><div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/65">Tourism & Civil Aviation Department</p><h1 className="mt-2 font-serif text-3xl font-bold sm:text-4xl">Operations Console</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/80">Live data management for destinations, official circulars, and AI search.</p></div><div className="flex gap-2"><button onClick={load} className="rounded-xl bg-white/12 p-3 transition hover:bg-white/20" aria-label="Refresh"><RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} /></button><button onClick={() => setKey("")} className="rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Lock</button></div></div></section>
+  return <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8"><div className="mx-auto max-w-7xl"><section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#103e35,#247969_55%,#cf8f2f)] p-6 text-white shadow-2xl sm:p-10"><div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/65">Tourism & Civil Aviation Department</p><h1 className="mt-2 font-serif text-3xl font-bold sm:text-4xl">Operations Console</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/80">Live data management for destinations, official circulars, and AI search.</p></div><div className="flex gap-2"><button onClick={() => void load()} className="rounded-xl bg-white/12 p-3 transition hover:bg-white/20" aria-label="Refresh"><RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} /></button><button onClick={logout} className="rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Logout</button></div></div></section>
 
   <div className="mt-6 flex gap-2 overflow-x-auto pb-1">{([ ["overview", Activity, "Overview"], ["destinations", MapPinned, "Destinations"], ["circulars", FileUp, "Circulars"] ] as const).map(([value, Icon, label]) => <button key={value} onClick={() => setTab(value)} className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === value ? "bg-primary text-primary-foreground shadow" : "border border-border bg-card hover:bg-muted"}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
   {error && <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mt-5 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertTriangle className="h-5 w-5 shrink-0" />{error}</motion.div>}{notice && <motion.div initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="mt-5 flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary"><CheckCircle2 className="h-5 w-5 shrink-0" />{notice}<button className="ml-auto" onClick={() => setNotice(null)}><X className="h-4 w-4" /></button></motion.div>}

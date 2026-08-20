@@ -10,11 +10,12 @@ from __future__ import annotations
 import hmac
 import base64
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 
 from app.config import settings
 from app.database.factory import get_repo
 from app.services.admin_auth import hash_password, verify_password
+from app.services.admin_session import SESSION_COOKIE_NAME, read_admin_session
 
 
 # Run the same deliberately expensive scrypt operation for a nonexistent user
@@ -59,9 +60,14 @@ async def verify_admin_key(x_admin_key: str | None = Header(default=None)) -> No
 
 
 async def verify_admin_credentials(
-        authorization: str | None = Header(default=None), repo=Depends(get_repo),
+        authorization: str | None = Header(default=None),
+        admin_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+        repo=Depends(get_repo),
 ) -> str:
-    """Authorize every admin request with the supplied username and password."""
+    """Authorize admin requests with a signed session or legacy Basic credentials."""
+    session_username = read_admin_session(admin_session)
+    if session_username:
+        return session_username
     if not authorization or not authorization.startswith("Basic "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
