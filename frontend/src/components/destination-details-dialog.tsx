@@ -40,15 +40,28 @@ const destinationGallery: Record<string, string[]> = {
     "/images/Gangtok/Tashi_View_Point.webp",
     "/images/Gangtok/Enchey_Monastery.webp",
   ],
-  // Example for adding landmark-specific Gangtok photos:
-  // gangtok: ["/images/Gangtok.png", "/images/gangtok-mg-marg.jpg", "https://res.cloudinary.com/<your-cloud>/image/upload/v1234/enchey-monastery.jpg"],
-  pelling: ["/images/Pelling.jpeg", "/images/Yuksom.jpeg", "/images/L_Z.jpeg"],
 
-  "nathula-pass": [
-    "/images/Nathula_Pass.jpeg",
-    "/images/Tsomgo_Lake.jpeg",
-    "/images/Gangtok.png",
+  "gurudongmar-lake": [
+    "/images/Gurudongmar_Lake/G_L-02.webp",
+    "/images/Gurudongmar_Lake/G_L-01.webp",
+    "/images/Gurudongmar_Lake/G_L-03.webp",
   ],
+
+  namchi: [
+    "/images/Namchi/Samdruptse.webp",
+    "/images/Namchi/Chardham.webp",
+    "/images/Namchi/Rock_Garden.webp",
+    "/images/Namchi/Ngadak_Monastery.webp",
+  ],
+
+  "nathu-la": [
+    "/images/Nathula/Border.webp",
+    "/images/Nathula/View_Point.webp",
+    "/images/Nathula/Snow_Peaks.webp",
+    "/images/Nathula/Glacier.webp",
+  ],
+
+  pelling: ["/images/Pelling.jpeg", "/images/Yuksom.jpeg", "/images/L_Z.jpeg"],
 
   "tsomgo-lake": [
     "/images/Tsomgo_Lake.jpeg",
@@ -56,22 +69,16 @@ const destinationGallery: Record<string, string[]> = {
     "/images/Gangtok.png",
   ],
 
-  "gurudongmar-lake": [
-    "/images/Gurudongmar_Lake/G_L-01.webp",
-    "/images/Gurudongmar_Lake/G_L-02.webp",
-    "/images/Gurudongmar_Lake/G_L-03.webp",
-  ],
-
   "yumthang-valley": [
     "/images/Yumthang_Valley.jpeg",
     "/images/Gurudongmar_Lake.jpeg",
   ],
-  namchi: ["/images/Namchi.jpeg", "/images/Ravangla.jpeg"],
 
   ravangla: ["/images/Ravangla.jpeg", "/images/Namchi.jpeg"],
 
   yuksom: ["/images/Yuksom.jpeg", "/images/Pelling.jpeg", "/images/L_Z.jpeg"],
 };
+
 const fallbackGallery = [
   "/images/Gangtok.png",
   "/images/Tsomgo_Lake.jpeg",
@@ -79,12 +86,15 @@ const fallbackGallery = [
 ];
 
 function galleryFor(destination: Destination) {
+  const curatedGallery = destinationGallery[destination.slug];
   return [
     ...new Set(
       [
-        destination.imageUrl,
-        ...(destinationGallery[destination.slug] ?? []),
-        ...fallbackGallery,
+        // A curated gallery is intentional and must remain exact — do not
+        // quietly append the card cover or generic fallback photos to it.
+        ...(curatedGallery?.length
+          ? curatedGallery
+          : [destination.imageUrl, ...fallbackGallery]),
       ].filter(Boolean) as string[],
     ),
   ];
@@ -210,6 +220,7 @@ export function DestinationDetailsDialog({
     setDest(null);
     setFetchError(null);
     setFailedImages([]);
+    setActiveImage(0);
     fetchDestination(id)
       .then(setDest)
       .catch((err: unknown) => {
@@ -225,6 +236,11 @@ export function DestinationDetailsDialog({
         : [],
     [dest, failedImages],
   );
+  useEffect(() => {
+    // A previous destination can have more photos than the next one. Keep the
+    // selected index valid after changing dialogs or removing a failed image.
+    setActiveImage((current) => (slides.length ? Math.min(current, slides.length - 1) : 0));
+  }, [slides.length]);
   const reach = useMemo(
     () => (dest ? reachDetails(dest.howToReach, dest.location) : null),
     [dest],

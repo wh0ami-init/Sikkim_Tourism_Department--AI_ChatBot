@@ -124,16 +124,15 @@ function AdvisoryList({
   const shouldReduceMotion = useReducedMotion();
   return (
     <motion.section
-      className="group relative overflow-hidden rounded-2xl border border-amber-700/10 bg-background/70 shadow-sm transition-all duration-500 hover:border-primary/55 hover:bg-primary/[0.035] hover:shadow-[0_20px_42px_-25px_rgba(22,107,82,0.46)] dark:bg-card/70 dark:hover:bg-primary/[0.06]"
+      className="relative overflow-hidden rounded-2xl border border-primary/45 bg-primary/[0.035] shadow-[0_20px_42px_-25px_rgba(22,107,82,0.46)] dark:bg-primary/[0.08]"
       initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      whileHover={shouldReduceMotion ? undefined : { y: -6, boxShadow: "0 22px 44px -26px rgba(22,107,82,0.48)" }}
       viewport={{ once: true, amount: 0.38 }}
       transition={{ duration: shouldReduceMotion ? 0 : 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
     >
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 z-10 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-primary via-emerald-400 to-transparent transition-transform duration-700 ease-out group-hover:scale-x-100" />
-      <div className="flex items-start gap-3 border-b border-amber-700/10 bg-amber-100/35 p-4 transition-colors duration-500 group-hover:bg-primary/[0.08] dark:bg-amber-400/5 dark:group-hover:bg-primary/[0.12]">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 transition-all duration-500 group-hover:scale-110 group-hover:-rotate-6 group-hover:bg-primary/15 group-hover:text-primary dark:text-amber-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-primary via-emerald-400 to-transparent" />
+      <div className="flex items-start gap-3 border-b border-primary/15 bg-primary/[0.08] p-4 dark:bg-primary/[0.13]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary"><Icon className="h-4 w-4" aria-hidden="true" /></span>
         <div><h3 className="font-serif text-lg font-bold text-foreground">{title}</h3><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div>
       </div>
       <div className="max-h-[29rem] space-y-2 overflow-y-auto p-2">
