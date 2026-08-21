@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { ArrowUpRight, ChevronRight, HeartHandshake, Leaf, LockKeyhole, Mail, Map, MapPin, Menu, MessageSquare, MountainSnow, Phone, Sun, Moon, X } from "lucide-react";
+import { ArrowUpRight, ChevronRight, HeartHandshake, Leaf, LockKeyhole, Mail, Map, MapPin, Menu, MessageSquare, MountainSnow, Phone, Sun, Moon, UserRound, X } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 import { GOVT_LOGO_SRC } from "@/config/brand";
 import { getAdminSession } from "@/lib/api";
@@ -240,9 +240,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           : "border-primary/20 bg-primary/8 text-primary hover:border-primary/35 hover:bg-primary/12"
                   }`}
               >
-                <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="max-w-32 truncate">{adminName ? `Hi, ${adminName}` : "Admin sign-in"}</span>
-                <span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${isHome ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>{adminName ? "Console" : "Staff only"}</span>
+                {adminName ? <><span className="relative flex h-7 w-7 shrink-0 items-center justify-center"><UserRound className="h-5 w-5 origin-bottom transition-transform duration-300 group-hover:-rotate-6 group-hover:translate-y-0.5 group-hover:scale-110" aria-hidden="true" /><span className="absolute -right-2 -top-1 rounded-full bg-secondary px-1 py-px text-[0.45rem] font-extrabold leading-none text-secondary-foreground shadow-sm">Hi</span></span><span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-36 group-hover:opacity-100">Hi, {adminName}</span></> : <><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /><span>Admin sign-in</span><span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${isHome ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>Staff only</span></>}
               </Link>
 
               <button
@@ -352,7 +350,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                             title={adminName ? `Open the operations console for ${adminName}` : "Administrator sign-in — authorised department staff only"}
                             className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-primary transition-all duration-200 hover:bg-primary/8"
                         >
-                          <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+                          {adminName ? <UserRound className="h-4 w-4" aria-hidden="true" /> : <LockKeyhole className="h-4 w-4" aria-hidden="true" />}
                           <span>{adminName ? `Hi, ${adminName}` : "Admin sign-in"}</span>
                           <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide">{adminName ? "Console" : "Staff only"}</span>
                         </Link>

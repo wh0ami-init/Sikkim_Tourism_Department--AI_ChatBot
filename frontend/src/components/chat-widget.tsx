@@ -243,7 +243,7 @@ export function ChatWidget() {
             className={
               isFullscreen
                 ? "fixed inset-0 z-[70] sm:inset-3"
-                : "fixed inset-x-0 bottom-0 z-[70] h-[100dvh] sm:inset-auto sm:right-6 sm:bottom-[calc(60px+1.25rem)] sm:h-[78vh] sm:max-h-[680px] sm:w-[404px]"
+                : "fixed inset-x-0 bottom-0 z-[70] h-[100dvh] sm:inset-auto sm:right-6 sm:bottom-[calc(60px+1.25rem)] sm:h-[78vh] sm:max-h-[720px] sm:w-[min(42rem,calc(100vw-3rem))]"
             }
           >
             {/* Glowing rotating ring lives on its own layer, one level up
@@ -293,7 +293,7 @@ export function ChatWidget() {
                 }}
               >
                 {/* Prayer flag strip — the only visible "flash" of colour. */}
-                <PrayerFlagBar thicknessClassName="h-[3px]" />
+                <PrayerFlagBar thicknessClassName="h-[5px]" />
 
                 {/* Soft diagonal sheen — depth without noise or texture. */}
                 <div
@@ -434,7 +434,7 @@ export function ChatWidget() {
                 <Suspense
                   fallback={<div className="h-full" aria-busy="true" />}
                 >
-                  <Chat compact />
+                  <Chat compact wide={isFullscreen} />
                 </Suspense>
               </div>
             </div>

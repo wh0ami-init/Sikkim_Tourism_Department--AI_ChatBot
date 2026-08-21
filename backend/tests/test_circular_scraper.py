@@ -2,7 +2,21 @@
 
 import pytest
 
+from app.models.schemas import Circular
 from app.services import circular_scraper
+
+
+def test_circular_text_is_normalised_to_plain_text():
+    circular = Circular(
+        title="Road advisory",
+        category="road_status",
+        issue_date="2026-08-21",
+        source_url="https://sikkimtourism.gov.in/updates/notice",
+        pdf_hash="test-hash",
+        extracted_text="Road update&lt;br&gt;Travel carefully.<div>Check official notices.</div>",
+    )
+
+    assert circular.extracted_text == "Road update\nTravel carefully.\nCheck official notices."
 
 
 @pytest.mark.asyncio

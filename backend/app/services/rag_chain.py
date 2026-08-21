@@ -438,12 +438,19 @@ def _get_llm(
         streaming: bool = True,
 ) -> ChatGroq:
     """Return a cached Groq client for the requested model."""
+    options = {
+        "model": model_name,
+        "api_key": settings.groq_api_key,
+        "temperature": 0.3,
+        "max_tokens": settings.groq_max_tokens,
+        "streaming": streaming,
+    }
+    # Groq only accepts this parameter for GPT-OSS. The optional Prompt Guard
+    # classifier is a different model family and must retain its own defaults.
+    if model_name.startswith("openai/gpt-oss-"):
+        options["reasoning_effort"] = settings.groq_reasoning_effort
     return ChatGroq(
-        model=model_name,
-        api_key=settings.groq_api_key,
-        temperature=0.3,
-        max_tokens=2048,
-        streaming=streaming,
+        **options,
     )
 
 
@@ -828,6 +835,12 @@ _OFFICIAL_FACT_KEYWORDS = (
     "official circular",
     "government notice",
     "advisory",
+    "festival",
+    "festivals",
+    "event",
+    "events",
+    "celebration",
+    "celebrations",
 )
 
 

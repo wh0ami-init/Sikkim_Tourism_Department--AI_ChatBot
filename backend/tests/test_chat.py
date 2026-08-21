@@ -12,7 +12,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.schemas import ChatRequest
-from app.routers.chat import _extract_district, _needs_agency_directory_listing, _needs_full_destination_context
+from app.routers.chat import _extract_district, _needs_agency_directory_listing, _needs_agency_lookup, _needs_full_destination_context
 from app.services.rag_chain import (
     _guard_label_is_benign,
     _looks_like_prompt_injection,
@@ -107,6 +107,16 @@ def test_agency_district_aliases_and_followups_are_resolved():
         [{"role": "user", "content": "List agencies in Gangtok"}],
     )
     assert _needs_agency_directory_listing("Mangan travel agencies")
+
+
+def test_tourism_questions_do_not_get_misrouted_to_agency_lookup():
+    assert not _needs_agency_lookup("What official upcoming festivals are there in Sikkim tourism?")
+    assert _needs_agency_lookup("Give me contact details for Bayul Tours and Travels")
+
+
+def test_festival_questions_prefer_official_live_search():
+    from app.services.rag_chain import _is_official_fact_question
+    assert _is_official_fact_question("What are the official upcoming festivals in Sikkim?")
 
 
 # ── /api/conversations endpoints (HTTP-level) ──────────────────────────────

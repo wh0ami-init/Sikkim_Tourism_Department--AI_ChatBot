@@ -103,7 +103,7 @@ function LeadershipSection() {
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
       <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={sectionHeaderVariants} className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-primary/80">Tourism &amp; Civil Aviation Department</p><h2 id="leadership-title" className="font-serif text-2xl font-bold text-foreground sm:text-3xl">Leadership &amp; Key Officials</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Meet the leaders supporting Sikkim’s vision for responsible, welcoming tourism.</p></div><div className="flex gap-2"><button type="button" onClick={selectPrevious} aria-label="Show previous official" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 text-foreground transition hover:border-primary/35 hover:text-primary"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={selectNext} aria-label="Show next official" className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:-translate-y-0.5"><ChevronRight className="h-4 w-4" /></button></div></motion.div>
       <div className="relative mt-8 grid gap-7 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
-        <motion.div initial={{ opacity: 0, y: 32, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }} className="relative mx-auto w-full max-w-[18rem] sm:max-w-[20rem]"><div className="relative aspect-[3/4] overflow-hidden rounded-[1.5rem] border border-primary/20 bg-primary/10 shadow-[0_22px_52px_rgba(15,23,42,0.18)] dark:border-primary/25"><AnimatePresence mode="wait"><motion.img key={`backdrop-${activeOfficial.photo}`} src={activeOfficial.photo} alt="" aria-hidden="true" initial={{ opacity: 0, scale: 1.06 }} animate={{ opacity: 0.44, scale: 1.02 }} exit={{ opacity: 0, scale: 1.06 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0 h-full w-full scale-105 object-cover object-top blur-[2px]" /></AnimatePresence><div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,42,35,0.24),rgba(7,42,35,0.04)_55%,rgba(233,169,59,0.1))]" /><div className="absolute inset-x-5 top-5 bottom-20 overflow-hidden rounded-2xl border border-white/35 bg-white/10 shadow-[0_14px_30px_rgba(0,0,0,0.22)]"><AnimatePresence mode="wait"><motion.img key={activeOfficial.photo} src={activeOfficial.photo} alt={activeOfficial.name} initial={{ opacity: 0, scale: 1.035 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.985 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="h-full w-full object-cover object-top" /></AnimatePresence></div><div className="absolute bottom-4 left-4"><span className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-white backdrop-blur-md">Official leadership</span></div></div></motion.div>
+        <motion.div initial={{ opacity: 0, y: 32, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }} className="relative mx-auto w-full max-w-[18rem] sm:max-w-[20rem]"><div aria-hidden="true" className="absolute -inset-3 rounded-[2rem] bg-[conic-gradient(from_210deg,rgba(22,107,82,0.28),transparent_28%,rgba(233,169,59,0.22),transparent_64%,rgba(22,107,82,0.24))] blur-xl" /><div className="relative aspect-[4/5] overflow-hidden rounded-[1.75rem] border border-primary/25 bg-[#0b2722] shadow-[0_26px_58px_rgba(15,23,42,0.22)]"><AnimatePresence mode="wait"><motion.img key={activeOfficial.photo} src={activeOfficial.photo} alt={activeOfficial.name} initial={{ opacity: 0, scale: 1.075 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.985 }} transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }} className="h-full w-full object-cover object-top" /></AnimatePresence><div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,25,21,0.10),transparent_42%,rgba(5,25,21,0.58))]" /><div aria-hidden="true" className="absolute inset-3 rounded-[1.25rem] border border-white/30" /><div className="absolute left-5 top-3"><span className="rounded-full border border-white/25 bg-slate-950/35 px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md">Official leadership</span></div><div className="absolute bottom-5 left-5 right-5 flex items-end justify-between"><span className="h-px flex-1 bg-white/55" /><span className="ml-3 font-serif text-sm font-semibold text-white/90">0{activeIndex + 1} / 0{leadershipOfficials.length}</span></div></div></motion.div>
         <motion.div initial={{ opacity: 0, x: 34 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }} className="min-w-0" aria-live="polite"><AnimatePresence mode="wait"><motion.div key={activeOfficial.name} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">{activeOfficial.designation}</p><h3 className="mt-3 font-serif text-3xl font-bold leading-tight text-foreground sm:text-4xl">{activeOfficial.name}</h3><p className="mt-3 text-sm font-medium text-primary">{activeOfficial.department}</p><div className="mt-7 border-l-2 border-amber-400 pl-5"><Quote className="mb-3 h-6 w-6 text-amber-500/70" aria-hidden="true" /><p className="max-w-xl font-serif text-xl leading-relaxed text-foreground/90 sm:text-2xl">“{activeOfficial.message}”</p></div></motion.div></AnimatePresence></motion.div>
       </div>
       <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.7, delay: 0.28, ease: [0.22, 1, 0.36, 1] }} className="relative mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">{leadershipOfficials.map((official, index) => <button key={official.name} type="button" onClick={() => setActiveIndex(index)} aria-current={index === activeIndex ? "true" : undefined} className={`group flex items-center gap-3 rounded-2xl border p-2.5 text-left transition-all ${index === activeIndex ? "border-primary/35 bg-primary/8 shadow-sm" : "border-border/70 bg-background/50 hover:border-primary/20 hover:bg-primary/5"}`}><img src={official.photo} alt="" className="h-11 w-11 rounded-xl object-cover object-top" /><span className="min-w-0"><span className="block truncate text-xs font-bold text-foreground">{official.name.replace("Shri ", "")}</span><span className="mt-0.5 block truncate text-[0.68rem] text-muted-foreground">{official.designation.replace("Hon'ble ", "")}</span></span></button>)}</motion.div>
@@ -124,21 +124,23 @@ function AdvisoryList({
   const shouldReduceMotion = useReducedMotion();
   return (
     <motion.section
-      className="overflow-hidden rounded-2xl border border-amber-700/10 bg-background/70 shadow-sm dark:bg-card/70"
+      className="group relative overflow-hidden rounded-2xl border border-amber-700/10 bg-background/70 shadow-sm transition-all duration-500 hover:border-primary/55 hover:bg-primary/[0.035] hover:shadow-[0_20px_42px_-25px_rgba(22,107,82,0.46)] dark:bg-card/70 dark:hover:bg-primary/[0.06]"
       initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
+      whileHover={shouldReduceMotion ? undefined : { y: -6, boxShadow: "0 22px 44px -26px rgba(22,107,82,0.48)" }}
       viewport={{ once: true, amount: 0.38 }}
       transition={{ duration: shouldReduceMotion ? 0 : 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="flex items-start gap-3 border-b border-amber-700/10 bg-amber-100/35 p-4 dark:bg-amber-400/5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 z-10 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-primary via-emerald-400 to-transparent transition-transform duration-700 ease-out group-hover:scale-x-100" />
+      <div className="flex items-start gap-3 border-b border-amber-700/10 bg-amber-100/35 p-4 transition-colors duration-500 group-hover:bg-primary/[0.08] dark:bg-amber-400/5 dark:group-hover:bg-primary/[0.12]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 transition-all duration-500 group-hover:scale-110 group-hover:-rotate-6 group-hover:bg-primary/15 group-hover:text-primary dark:text-amber-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
         <div><h3 className="font-serif text-lg font-bold text-foreground">{title}</h3><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div>
       </div>
-      <div className="max-h-[29rem] divide-y divide-amber-700/10 overflow-y-auto">
+      <div className="max-h-[29rem] space-y-2 overflow-y-auto p-2">
         {advisories.map((advisory, index) => {
           const documentUrl = advisory.has_file ? advisoryFileUrl(advisory.id) : advisory.source_url;
           const canVisit = advisory.has_file || advisory.source_url.startsWith("https://sikkimtourism.gov.in/");
-          return <motion.article key={advisory.id} className={`interactive-lift relative overflow-hidden ${index === 0 ? "border-l-2 border-amber-500 bg-amber-100/55 p-4 dark:bg-amber-400/10" : "p-4"}`} initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.65, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}>
+          return <motion.article key={advisory.id} className={`group/item interactive-lift relative overflow-hidden rounded-lg border p-4 transition-all duration-300 hover:-translate-y-0.5 ${index === 0 ? "border-amber-500/45 border-l-2 bg-amber-100/55 hover:border-amber-500/70 hover:bg-amber-100/75 hover:shadow-[0_12px_26px_-20px_rgba(180,83,9,0.55)] dark:bg-amber-400/10 dark:hover:bg-amber-400/15" : "border-border/65 bg-background/45 hover:border-primary/45 hover:bg-primary/[0.055] hover:shadow-[0_12px_26px_-20px_rgba(22,107,82,0.5)] dark:bg-card/30 dark:hover:bg-primary/[0.10]"}`} initial={shouldReduceMotion ? false : { opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} whileHover={shouldReduceMotion ? undefined : { x: 3 }} transition={{ duration: shouldReduceMotion ? 0 : 0.65, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}>
             <div className="relative flex items-center justify-between gap-2"><p className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{advisory.issue_date}</p>{index === 0 && <motion.span className="inline-flex items-center gap-1.5 rounded-full bg-amber-700 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide text-white shadow-sm" initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }} animate={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, boxShadow: ["0 1px 2px rgba(0,0,0,0.12)", "0 0 0 4px rgba(180,83,9,0.12)", "0 1px 2px rgba(0,0,0,0.12)"] }} transition={shouldReduceMotion ? { duration: 0 } : { opacity: { duration: 0.35, delay: 0.2, ease: "easeOut" }, y: { duration: 0.35, delay: 0.2, ease: "easeOut" }, boxShadow: { duration: 2.6, repeat: Infinity, repeatDelay: 3.2, ease: "easeInOut" } }}><motion.span className="h-1.5 w-1.5 rounded-full bg-amber-100" animate={shouldReduceMotion ? undefined : { scale: [1, 1.45, 1], opacity: [1, 0.5, 1] }} transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 3.2, ease: "easeInOut" }} />Latest</motion.span>}</div>
             <h4 className="relative mt-2 text-sm font-semibold leading-snug text-foreground">{advisory.title}</h4>
             {advisory.district && <p className="relative mt-1 text-xs text-muted-foreground">{advisory.district} District</p>}
@@ -159,6 +161,17 @@ const advisoryCategoryLabels: Record<Advisory["category"], string> = {
   cancellation_order: "Cancellation order",
   tender: "Tender & bid",
 };
+
+/** Keep the public notice board clean if an upstream listing repeats a notice. */
+function uniqueAdvisories(rows: Advisory[]): Advisory[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = `${row.category}:${row.title.trim().replace(/\s+/g, " ").toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 function AdvisoryPreview({ advisory, onClose }: { advisory: Advisory; onClose: () => void }) {
   return <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
@@ -225,12 +238,12 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const loadAdvisories = () => Promise.all([
-        fetchAdvisories("road_status", controller.signal),
-        fetchAdvisories("cancellation_order", controller.signal),
-        fetchAdvisories("tender", controller.signal),
-      ])
-          .then(([road_status, cancellation_order, tender]) => setAdvisories({ road_status, cancellation_order, tender }))
+    const loadAdvisories = () => fetchAdvisories(undefined, controller.signal)
+          .then((rows) => setAdvisories({
+            road_status: uniqueAdvisories(rows.filter((row) => row.category === "road_status")),
+            cancellation_order: uniqueAdvisories(rows.filter((row) => row.category === "cancellation_order")),
+            tender: uniqueAdvisories(rows.filter((row) => row.category === "tender")),
+          }))
           .catch((err: unknown) => {
             if (err instanceof Error && err.name === "AbortError") return;
             console.error("Failed to load official advisories:", err);

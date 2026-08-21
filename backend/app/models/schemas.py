@@ -7,6 +7,7 @@ causes DeprecationWarnings on Python 3.12+.
 """
 from __future__ import annotations
 
+import html
 import re
 import unicodedata
 from base64 import b64decode
@@ -164,6 +165,29 @@ class Circular(BaseModel):
     file_mime_type: str | None = None
     file_name: str | None = None
     has_file: bool = False
+
+    @field_validator("extracted_text", mode="before")
+    @classmethod
+    def normalise_extracted_text(cls, value: object) -> object:
+        """Store and return circular OCR as plain, readable text.
+
+        Some scanned-document OCR and older imports contain HTML line-breaks
+        such as ``<br>`` or escaped ``&lt;br&gt;``. Circular text is shown in
+        administrative previews and supplied to the assistant as source data,
+        so markup must never leak into either surface.
+        """
+        if not isinstance(value, str):
+            return value
+
+        text = html.unescape(value)
+        text = re.sub(r"<\s*br\s*/?\s*>", "\n", text, flags=re.IGNORECASE)
+        text = re.sub(r"<\s*(?:p|div|li|tr|h[1-6])\b[^>]*>", "\n", text, flags=re.IGNORECASE)
+        text = re.sub(r"</\s*(?:p|div|li|tr|h[1-6])\s*>", "\n", text, flags=re.IGNORECASE)
+        text = re.sub(r"<[^>]*>", "", text)
+        text = re.sub(r"[ \t]+\n", "\n", text)
+        text = re.sub(r"\n[ \t]+", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
 
 
 class AdvisorySummary(BaseModel):

@@ -90,11 +90,6 @@ _LATEST_UPDATE_PHRASES = (
 
 _AGENCY_LOOKUP_PHRASES = (
     "travel agency", "travel agencies", "tour operator", "tour operators",
-    "registration number", "regd no", "reg no", "reg. no",
-    "email for", "email of", "email address of", "email address for",
-    "contact for", "contact of", "contact details of", "contact number of",
-    "phone number for", "phone number of", "agency email", "agency contact",
-    "details of", "full details", "full data of", "info of", "information of",
     "tours and travels", "tour and travels",
 )
 
@@ -128,16 +123,20 @@ def _needs_agency_lookup(message: str) -> bool:
     # resolver.  Those should use the directory/RAG path instead.
     if any(word in text for word in ("recommend", "recommended", "suggest", "best", "package", "itinerary")):
         return False
-    if "agency" in text or "agencies" in text:
+    # Use whole words here. The older substring checks treated "tourism" as
+    # "tour" and sent ordinary questions such as upcoming festival information
+    # into the travel-agency resolver.
+    words = set(re.findall(r"[a-z]+", text))
+    if "agency" in words or "agencies" in words:
         return True
-    has_entity_word = any(w in text for w in _AGENCY_ENTITY_WORDS)
-    has_intent_word = any(w in text for w in _AGENCY_INTENT_WORDS)
+    has_entity_word = bool(words.intersection(_AGENCY_ENTITY_WORDS))
+    has_intent_word = bool(words.intersection(_AGENCY_INTENT_WORDS))
     if has_entity_word and has_intent_word:
         return True
     if (
             has_entity_word
-            and len(text.split()) <= 8
-            and not any(w in text for w in _AGENCY_GENERIC_WORDS)
+            and len(words) <= 8
+            and not words.intersection(_AGENCY_GENERIC_WORDS)
     ):
         return True
     return False

@@ -8,6 +8,7 @@ import {
   MapPin,
   MountainSnow,
   Calendar,
+  ChevronDown,
   ChevronRight,
   Mic,
   MicOff,
@@ -228,14 +229,14 @@ function AssistantMessage({
               aria-label="Scrollable response table"
               tabIndex={0}
             >
-              <table className="w-max min-w-[34rem] text-sm border-collapse">
+              <table className="w-full min-w-[18rem] table-fixed border-collapse text-xs sm:w-max sm:min-w-[34rem] sm:text-sm">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
             <th
-              className="text-left font-semibold py-1.5 px-2 border-b whitespace-nowrap"
+              className="break-words px-2 py-1.5 text-left font-semibold border-b sm:whitespace-nowrap"
               style={{ borderColor: theme.border, background: theme.bgDeep }}
             >
               {children}
@@ -243,7 +244,7 @@ function AssistantMessage({
           ),
           td: ({ children }) => (
             <td
-              className="py-1.5 px-2 border-b align-top break-words"
+              className="break-words px-2 py-1.5 align-top border-b"
               style={{ borderColor: theme.border, maxWidth: "14rem" }}
             >
               {children}
@@ -767,7 +768,7 @@ function Bubble({
 
    Both render identically: same palette, same spacing, same bubble rules.
    ─────────────────────────────────────────────────────────────────────── */
-export function Chat({ compact = false }: { compact?: boolean }) {
+export function Chat({ compact = false, wide = false }: { compact?: boolean; wide?: boolean }) {
   const theme = useChatTheme();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversationAccessToken, setConversationAccessToken] = useState<
@@ -778,12 +779,14 @@ export function Chat({ compact = false }: { compact?: boolean }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [lastSentHadImage, setLastSentHadImage] = useState(false);
   const [failedTurn, setFailedTurn] = useState<{
     text: string;
     image: PendingImage | null;
     clientMessageId: string;
   } | null>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   // Voice input state
   const [isListening, setIsListening] = useState(false);
@@ -793,6 +796,7 @@ export function Chat({ compact = false }: { compact?: boolean }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldFollowStreamRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Belt-and-suspenders re-entrancy lock for handleSend. The `isStreaming`
@@ -830,14 +834,38 @@ export function Chat({ compact = false }: { compact?: boolean }) {
     resizeInput();
   }, [input, resizeInput]);
 
-  /* RAF-locked smooth scroll — feels calmer than instant jump on Android. */
-  const scrollToBottom = useCallback(() => {
+  /* Follow streamed text only while the visitor is already reading at the
+     bottom. This prevents a long answer from pulling someone back down while
+     they have deliberately scrolled up to reread an earlier section. */
+  const scrollToBottom = useCallback((force = false) => {
     requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
+      if (!force && !shouldFollowStreamRef.current) return;
+      const viewport = scrollRef.current?.querySelector<HTMLElement>(
+        "[data-radix-scroll-area-viewport]",
+      );
+      if (!viewport) return;
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: isStreaming ? "auto" : "smooth",
       });
     });
+  }, [isStreaming]);
+
+  useEffect(() => {
+    const viewport = scrollRef.current?.querySelector<HTMLElement>(
+      "[data-radix-scroll-area-viewport]",
+    );
+    if (!viewport) return;
+
+    const onScroll = () => {
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      const isNearBottom = distanceFromBottom < 72;
+      shouldFollowStreamRef.current = isNearBottom;
+      setShowJumpToLatest(!isNearBottom);
+    };
+    onScroll();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -927,6 +955,7 @@ export function Chat({ compact = false }: { compact?: boolean }) {
   const clearPendingImage = useCallback(() => {
     setPendingImage(null);
     setImageError(null);
+    setChatError(null);
   }, []);
 
   /* ── Send ───────────────────────────────────────────────────────────── */
@@ -941,6 +970,8 @@ export function Chat({ compact = false }: { compact?: boolean }) {
     // Require at least text OR an image.
     if ((!trimmed && !image) || isStreaming || isSendingRef.current) return;
     isSendingRef.current = true;
+    shouldFollowStreamRef.current = true;
+    setShowJumpToLatest(false);
 
     setInput("");
     setPendingImage(null);
@@ -970,6 +1001,7 @@ export function Chat({ compact = false }: { compact?: boolean }) {
         currentAccessToken = res.accessToken;
       } catch (e) {
         console.error("Failed to create conversation", e);
+        setChatError("The assistant could not start a secure conversation. Please try again.");
         setFailedTurn({
           text: trimmed,
           image: image ?? null,
@@ -1209,7 +1241,6 @@ export function Chat({ compact = false }: { compact?: boolean }) {
     <div
       className="chat-conversation relative flex h-full min-h-0 flex-col backdrop-blur-xl backdrop-saturate-150"
       style={{ background: theme.bg }}
-      ref={scrollRef}
     >
       {/* Fixed colour wash behind the conversation */}
       <div
@@ -1224,9 +1255,10 @@ export function Chat({ compact = false }: { compact?: boolean }) {
         aria-hidden="true"
       />
 
-      <ScrollArea className="flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0">
+      <ScrollArea ref={scrollRef} className="h-full min-h-0">
         <div
-          className={`mx-auto w-full ${compact ? "max-w-2xl px-3.5 pt-5 pb-4 sm:px-5" : "max-w-2xl px-4 pt-7 pb-6 sm:px-8 sm:pt-10"}`}
+          className={`mx-auto w-full ${compact ? (wide ? "max-w-5xl px-4 pt-6 pb-5 sm:px-8" : "max-w-2xl px-3.5 pt-5 pb-4 sm:px-5") : "max-w-5xl px-4 pt-7 pb-6 sm:px-8 sm:pt-10"}`}
         >
           {messages.length === 0 ? (
             <EmptyState onPick={(t) => handleSend(t)} compact={compact} />
@@ -1266,6 +1298,26 @@ export function Chat({ compact = false }: { compact?: boolean }) {
           )}
         </div>
       </ScrollArea>
+      <AnimatePresence>
+        {showJumpToLatest && messages.length > 0 && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            onClick={() => {
+              shouldFollowStreamRef.current = true;
+              setShowJumpToLatest(false);
+              scrollToBottom(true);
+            }}
+            className="absolute bottom-3 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-lg backdrop-blur-xl transition hover:-translate-y-0.5"
+            style={{ borderColor: theme.border, background: theme.surface, color: theme.pine }}
+          >
+            Latest response <ChevronDown className="h-3.5 w-3.5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+      </div>
 
       {/* Hidden file input */}
       <input
@@ -1287,7 +1339,7 @@ export function Chat({ compact = false }: { compact?: boolean }) {
         }}
       >
         <div
-          className={`mx-auto w-full ${compact ? "max-w-2xl px-3.5 py-3 sm:px-5" : "max-w-2xl px-4 py-4 sm:px-8"}`}
+          className={`mx-auto w-full ${compact ? (wide ? "max-w-5xl px-4 py-4 sm:px-8" : "max-w-2xl px-3.5 py-3 sm:px-5") : "max-w-5xl px-4 py-4 sm:px-8"}`}
         >
           {/* Image preview strip — shown above the textarea when an image is attached */}
           <AnimatePresence>
@@ -1335,6 +1387,22 @@ export function Chat({ compact = false }: { compact?: boolean }) {
               >
                 {imageError}
               </motion.p>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {chatError && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mb-2 flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-[0.72rem] font-medium"
+                style={{ borderColor: withAlpha("#d88b32", 0.42), background: withAlpha("#d88b32", 0.08), color: theme.inkSoft }}
+                role="alert"
+              >
+                <span>{chatError}</span>
+                {failedTurn && <button type="button" onClick={retryFailedTurn} className="shrink-0 font-bold underline underline-offset-2" style={{ color: theme.pine }}>Try again</button>}
+              </motion.div>
             )}
           </AnimatePresence>
 

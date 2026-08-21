@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from datetime import datetime
 
 import mysql.connector
@@ -170,13 +171,14 @@ class MySQLRepository(BaseRepository):
             user: str,
             password: str,
             database: str,
+            pool_size: int = 10,
             ssl_ca: str | None = None,
             require_tls: bool = False,
     ) -> None:
         try:
             connection_options = {
                 "pool_name": "sikkim_tourism_pool",
-                "pool_size": 5,
+                "pool_size": pool_size,
                 "host": host,
                 "port": port,
                 "user": user,
@@ -202,9 +204,24 @@ class MySQLRepository(BaseRepository):
 
     # ── Low-level helpers ──────────────────────────────────────────────────────
 
+    def _get_connection(self):
+        """Borrow a connection, tolerating a short burst of parallel reads.
+
+        mysql-connector's pool fails immediately when every connection is
+        briefly in use. Queries here already run in worker threads, so a tiny
+        bounded wait is safer than exposing a transient 500 to visitors.
+        """
+        for attempt in range(4):
+            try:
+                return self._pool.get_connection()
+            except mysql.connector.PoolError:
+                if attempt == 3:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
+
     def _query(self, sql: str, params: tuple = ()) -> list[dict]:
         """Run a read query and always return the connection to the pool."""
-        conn = self._pool.get_connection()
+        conn = self._get_connection()
         try:
             cursor = conn.cursor(dictionary=True)
             try:
@@ -224,7 +241,7 @@ class MySQLRepository(BaseRepository):
         The nested cleanup keeps a failed query from leaking a pooled
         connection.
         """
-        conn = self._pool.get_connection()
+        conn = self._get_connection()
         try:
             cursor = conn.cursor()
             try:
@@ -319,7 +336,7 @@ class MySQLRepository(BaseRepository):
 
     async def save_circular(self, circular: Circular) -> Circular:
         def _insert() -> int:
-            conn = self._pool.get_connection()
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 try:
@@ -416,7 +433,7 @@ class MySQLRepository(BaseRepository):
 
     async def save_travel_agency(self, agency: TravelAgency) -> TravelAgency:
         def _upsert() -> int:
-            conn = self._pool.get_connection()
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 try:
@@ -573,7 +590,7 @@ class MySQLRepository(BaseRepository):
 
     async def create_destination(self, destination: DestinationWrite) -> Destination:
         def _insert() -> int:
-            conn = self._pool.get_connection()
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 try:

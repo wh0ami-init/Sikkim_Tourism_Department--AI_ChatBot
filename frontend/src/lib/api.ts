@@ -263,10 +263,12 @@ interface RawMessage {
 }
 
 export function fetchAdvisories(
-  category: Advisory["category"],
+  category?: Advisory["category"],
   signal?: AbortSignal,
 ): Promise<Advisory[]> {
-  return apiFetch<Advisory[]>(`/destinations/advisories?category=${category}&limit=100`, { signal });
+  const query = new URLSearchParams({ limit: "100" });
+  if (category) query.set("category", category);
+  return apiFetch<Advisory[]>(`/destinations/advisories?${query}`, { signal });
 }
 
 export const advisoryFileUrl = (id: number) => `/api/destinations/advisories/${id}/file`;

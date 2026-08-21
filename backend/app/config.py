@@ -2,6 +2,7 @@
 
 from urllib.parse import urlparse
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
     mysql_password: str = ""
     mysql_database: str = "sikkim_tourism"
     mysql_ssl_ca: str = "certs/ca.pem"
+    mysql_pool_size: int = Field(default=10, ge=2, le=32)
 
     # Gemini
     gemini_api_key: str = ""
@@ -28,8 +30,15 @@ class Settings(BaseSettings):
 
     # Groq
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
-    groq_fallback_model: str = "llama-3.1-8b-instant"
+    # Supported Groq production models. GPT-OSS 20B is the fast default for
+    # concise, retrieval-grounded visitor answers; 120B remains the fallback.
+    groq_model: str = "openai/gpt-oss-20b"
+    groq_fallback_model: str = "openai/gpt-oss-120b"
+    # Tourism questions are usually factual and retrieval-grounded. Low
+    # reasoning sharply improves time-to-first-answer without weakening the
+    # official-record checks performed by this application.
+    groq_reasoning_effort: Literal["low", "medium", "high"] = "low"
+    groq_max_tokens: int = Field(default=900, ge=128, le=4096)
 
     # Prompt guard
     enable_prompt_guard: bool = False
