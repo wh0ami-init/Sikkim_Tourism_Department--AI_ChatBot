@@ -150,6 +150,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   }, []);
 
+  const scrollToTop = useCallback(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }, []);
+
   const navLinks = [
     { href: "/", label: "Home", icon: MessageSquare },
     { href: "/destinations", label: "Destinations", icon: Map },
@@ -411,7 +416,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.82, y: 10 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              onClick={scrollToTop}
               aria-label="Go to top"
               title="Go to top"
               className="group fixed bottom-5 left-4 z-40 inline-flex h-12 items-center overflow-hidden rounded-full border border-primary/60 bg-primary px-3.5 text-primary-foreground shadow-[0_14px_34px_-10px_rgba(8,78,59,0.72)] ring-4 ring-primary/12 transition-[width,border-color,background-color,box-shadow,transform] duration-300 hover:-translate-y-1 hover:border-primary hover:bg-[#0b5a46] hover:shadow-[0_18px_40px_-10px_rgba(8,78,59,0.82)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-emerald-300/55 dark:bg-emerald-700 dark:ring-emerald-300/12 dark:hover:bg-emerald-600 sm:bottom-6 sm:left-6"
