@@ -33,56 +33,71 @@ import { AnimatePresence, motion } from "framer-motion";
 // The key must exactly match the destination's URL slug from the Admin panel.
 const destinationGallery: Record<string, string[]> = {
   gangtok: [
-    "/images/Gangtok/Mg_Marg.webp",
-    "/images/Gangtok/Rumtek_Monastery.webp",
-    "/images/Gangtok/Namgyal_Institute_of_Tibetology.webp",
-    "/images/Gangtok/Ropeway.webp",
-    "/images/Gangtok/Tashi_View_Point.webp",
-    "/images/Gangtok/Enchey_Monastery.webp",
+    "/images/D_D_Box/Gangtok/Mg_Marg.webp",
+    "/images/D_D_Box/Gangtok/Rumtek_Monastery.webp",
+    "/images/D_D_Box/Gangtok/Namgyal_Institute_of_Tibetology.webp",
+    "/images/D_D_Box/Gangtok/Ropeway.webp",
+    "/images/D_D_Box/Gangtok/Tashi_View_Point.webp",
+    "/images/D_D_Box/Gangtok/Enchey_Monastery.webp",
   ],
 
   "gurudongmar-lake": [
-    "/images/Gurudongmar_Lake/G_L-02.webp",
-    "/images/Gurudongmar_Lake/G_L-01.webp",
-    "/images/Gurudongmar_Lake/G_L-03.webp",
+    "/images/D_D_Box/Gurudongmar_Lake/G_L-02.webp",
+    "/images/D_D_Box/Gurudongmar_Lake/G_L-01.webp",
+    "/images/D_D_Box/Gurudongmar_Lake/G_L-03.webp",
   ],
 
   namchi: [
-    "/images/Namchi/Samdruptse.webp",
-    "/images/Namchi/Chardham.webp",
-    "/images/Namchi/Rock_Garden.webp",
-    "/images/Namchi/Ngadak_Monastery.webp",
+    "/images/D_D_Box/Namchi/Samdruptse.webp",
+    "/images/D_D_Box/Namchi/Chardham.webp",
+    "/images/D_D_Box/Namchi/Rock_Garden.webp",
+    "/images/D_D_Box/Namchi/Ngadak_Monastery.webp",
   ],
 
   "nathu-la": [
-    "/images/Nathula/Border.webp",
-    "/images/Nathula/View_Point.webp",
-    "/images/Nathula/Snow_Peaks.webp",
-    "/images/Nathula/Glacier.webp",
+    "/images/D_D_Box/Nathula/Border.webp",
+    "/images/D_D_Box/Nathula/View_Point.webp",
+    "/images/D_D_Box/Nathula/Snow_Peaks.webp",
+    "/images/D_D_Box/Nathula/Glacier.webp",
   ],
 
-  pelling: ["/images/Pelling.jpeg", "/images/Yuksom.jpeg", "/images/L_Z.jpeg"],
+  pelling: [
+    "/images/D_D_Box/Pelling/Kanchenjunga_View.webp",
+    "/images/D_D_Box/Pelling/Khecheopalri Lake.webp",
+    "/images/D_D_Box/Pelling/Pemayangtse_Monastery.webp",
+    "/images/D_D_Box/Pelling/Rabdentse_Ruins.webp",
+    "/images/D_D_Box/Pelling/Singshore_Bridge.webp",
+  ],
+
+  ravangla: [
+    "/images/D_D_Box/Ravangla/Buddha_Park.webp",
+    "/images/D_D_Box/Ravangla/Ralong_Monastery.webp",
+  ],
 
   "tsomgo-lake": [
-    "/images/Tsomgo_Lake.jpeg",
-    "/images/Nathula_Pass.jpeg",
-    "/images/Gangtok.png",
+    "/images/D_D_Box/Tsomgo_Lake/Lake_Freeze.webp",
+    "/images/D_D_Box/Tsomgo_Lake/Flower_Bloom.webp",
+    "/images/D_D_Box/Tsomgo_Lake/Yak_Rides.webp",
+  ],
+
+  yuksom: [
+    "/images/D_D_Box/Yuksom/Dubdi_Monastery.webp",
+    "/images/D_D_Box/Yuksom/Goechala_Trek.webp",
+    "/images/D_D_Box/Yuksom/Norbugang.webp",
+    "/images/D_D_Box/Yuksom/Kathok_Lake.webp",
   ],
 
   "yumthang-valley": [
-    "/images/Yumthang_Valley.jpeg",
-    "/images/Gurudongmar_Lake.jpeg",
+    "/images/D_D_Box/Yumthang_Valley/Rhododendron.webp",
+    "/images/D_D_Box/Yumthang_Valley/Hotsprings.webp",
+    "/images/D_D_Box/Yumthang_Valley/Shingba.webp",
   ],
-
-  ravangla: ["/images/Ravangla.jpeg", "/images/Namchi.jpeg"],
-
-  yuksom: ["/images/Yuksom.jpeg", "/images/Pelling.jpeg", "/images/L_Z.jpeg"],
 };
 
 const fallbackGallery = [
-  "/images/Gangtok.png",
-  "/images/Tsomgo_Lake.jpeg",
-  "/images/Yumthang_Valley.jpeg",
+  "/images/D_D_Box/Gangtok.png",
+  "/images/D_D_Box/Tsomgo_Lake.jpeg",
+  "/images/D_D_Box/Yumthang_Valley.jpeg",
 ];
 
 function galleryFor(destination: Destination) {
@@ -99,6 +114,24 @@ function galleryFor(destination: Destination) {
     ),
   ];
 }
+
+const galleryCaptionOverrides: Record<string, string> = {
+  "G_L-01": "Gurudongmar Lake",
+  "G_L-02": "Gurudongmar Lake",
+  "G_L-03": "Gurudongmar Lake",
+};
+
+function galleryCaption(image: string, destination: Destination) {
+  const filename = decodeURIComponent(image.split("/").pop() ?? "")
+    .replace(/\.[^.]+$/, "")
+    .trim();
+  if (!filename || /^v\d+$/i.test(filename)) return `${destination.name} scenic view`;
+  if (galleryCaptionOverrides[filename]) return galleryCaptionOverrides[filename];
+  return filename
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function reachDetails(value: string, location: string) {
   const parts =
     value
@@ -239,7 +272,9 @@ export function DestinationDetailsDialog({
   useEffect(() => {
     // A previous destination can have more photos than the next one. Keep the
     // selected index valid after changing dialogs or removing a failed image.
-    setActiveImage((current) => (slides.length ? Math.min(current, slides.length - 1) : 0));
+    setActiveImage((current) =>
+      slides.length ? Math.min(current, slides.length - 1) : 0,
+    );
   }, [slides.length]);
   const reach = useMemo(
     () => (dest ? reachDetails(dest.howToReach, dest.location) : null),
@@ -309,7 +344,7 @@ export function DestinationDetailsDialog({
                       initial={{ opacity: 0, scale: 1.02 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.65, ease: "easeOut" }}
+                      transition={{ duration: 0.42, ease: "easeOut" }}
                     >
                       <img
                         src={slides[activeImage]}
@@ -342,6 +377,37 @@ export function DestinationDetailsDialog({
                 )}
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,21,18,0.05),rgba(5,21,18,0.18),rgba(5,21,18,0.84))]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(233,169,59,0.24),transparent_30%)]" />
+                {slides.length > 0 && (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={slides[activeImage]}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ duration: 0.32, ease: "easeOut" }}
+                      className="absolute left-1/2 top-[17%] z-10 -translate-x-1/2"
+                    >
+                      <span className="inline-flex max-w-[calc(100vw-4rem)] items-center gap-2 rounded-full border border-white/25 bg-slate-950/45 px-4 py-2 text-center text-sm font-semibold text-white shadow-lg backdrop-blur-md sm:max-w-md sm:text-base">
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.55, x: 10, rotate: -18 }}
+                          animate={{ opacity: 1, scale: 1, x: 0, rotate: 0 }}
+                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                          className="shrink-0"
+                        >
+                          <MapPin className="h-4 w-4 text-amber-300" aria-hidden="true" />
+                        </motion.span>
+                        <motion.span
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.26, delay: 0.18, ease: "easeOut" }}
+                          className="truncate"
+                        >
+                          {galleryCaption(slides[activeImage], dest)}
+                        </motion.span>
+                      </span>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
                 {slides.length > 1 && (
                   <>
                     <button

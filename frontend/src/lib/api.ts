@@ -404,9 +404,14 @@ export async function deleteAdminCircular(adminKey: string, id: number): Promise
 
 export function runAdminSync(
   adminKey: string,
-  type: "destinations" | "circulars",
-): Promise<{ status: string; indexed?: number; new?: number; failed?: number }> {
-  return adminFetch(type === "destinations" ? "/sync" : "/sync-circulars", adminKey, {
+  type: "destinations" | "circulars" | "agencies",
+): Promise<{ status?: string; indexed?: number; new?: number; updated?: number; failed?: number }> {
+  const endpoints = {
+    destinations: "/sync",
+    circulars: "/sync-circulars",
+    agencies: "/sync-agencies",
+  } as const;
+  return adminFetch(endpoints[type], adminKey, {
     method: "POST",
   });
 }

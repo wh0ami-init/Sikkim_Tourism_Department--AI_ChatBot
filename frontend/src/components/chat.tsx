@@ -27,7 +27,7 @@ import { createConversation, fetchConversation, type Message } from "@/lib/api";
 import { GOVT_LOGO_SRC } from "@/config/brand";
 import { PrayerFlagBar } from "@/components/prayer-flag-bar";
 import { withAlpha } from "@/lib/utils";
-import { useChatTheme, type ChatTheme } from "@/config/chat-theme";
+import { useChatTheme } from "@/config/chat-theme";
 
 const STARTERS = [
   {

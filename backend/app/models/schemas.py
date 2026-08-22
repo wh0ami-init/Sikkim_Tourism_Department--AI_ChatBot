@@ -28,11 +28,6 @@ class AdminCredentials(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
-class AdminPasswordChange(BaseModel):
-    current_password: str = Field(min_length=1, max_length=128)
-    new_password: str = Field(min_length=1, max_length=128)
-
-
 class AdminCredentialsChange(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")

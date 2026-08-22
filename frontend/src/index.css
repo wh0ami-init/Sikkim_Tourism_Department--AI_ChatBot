@@ -736,4 +736,5 @@ input[type="file"][accept*="application/pdf"].sr-only + div > button:first-child
   .animate-chat-shimmer {
     animation: none !important;
   }
+
 }

@@ -7,7 +7,7 @@
 ### AI-Powered Visitor Information System
 **Tourism & Civil Aviation Department, Government of Sikkim**
 
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-68%20passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](#quality-assurance--verification)
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](#quality-assurance--verification)
 [![Frontend Build](https://img.shields.io/badge/frontend%20build-passing-brightgreen?style=for-the-badge&logo=vite&logoColor=white)](#quality-assurance--verification)
 [![Security Controls](https://img.shields.io/badge/security-controls%20reviewed-blue?style=for-the-badge&logo=shieldsdotio&logoColor=white)](#security-controls)
 [![Python](https://img.shields.io/badge/python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](#requirements)
