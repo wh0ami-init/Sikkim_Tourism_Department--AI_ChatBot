@@ -1,4 +1,4 @@
-"""Short-lived, signed server-side admin browser sessions."""
+"""Short-lived, signed administrator browser sessions."""
 from __future__ import annotations
 
 import base64
@@ -10,7 +10,9 @@ import time
 from app.config import settings
 
 SESSION_COOKIE_NAME = "sikkim_admin_session"
-SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14
+# A fixed server-enforced lifetime limits exposure on a shared or unattended
+# workstation even if the browser-side inactivity handler does not run.
+SESSION_MAX_AGE_SECONDS = 60 * 30
 
 
 def _encode(value: bytes) -> str:

@@ -36,6 +36,8 @@ const adminAccessSlides = [
 
 type UploadDraft = { file: File | null; title: string; category: string; district: string };
 
+const ADMIN_IDLE_TIMEOUT_MS = 15 * 60_000;
+
 export default function Admin() {
   // The browser stores only an HTTP-only signed session cookie. Passwords
   // never enter localStorage, sessionStorage, or JavaScript-accessible state.
@@ -80,6 +82,34 @@ export default function Admin() {
       .catch(() => setError("The admin sign-in service is unavailable. Please try again."));
     getAdminSession().then(() => setKey(ADMIN_SESSION_MARKER)).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!key) return;
+
+    let idleTimer: number;
+    const endInactiveSession = () => {
+      void logoutAdmin().catch(() => undefined).finally(() => {
+        setKey("");
+        setDashboard(null);
+        setDestinations([]);
+        setCirculars([]);
+        setError("Your admin session ended after 15 minutes of inactivity. Please sign in again.");
+        window.dispatchEvent(new Event("admin-session-changed"));
+      });
+    };
+    const resetIdleTimer = () => {
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(endInactiveSession, ADMIN_IDLE_TIMEOUT_MS);
+    };
+    const activityEvents = ["pointerdown", "keydown", "touchstart", "scroll"] as const;
+
+    activityEvents.forEach((event) => window.addEventListener(event, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+    return () => {
+      window.clearTimeout(idleTimer);
+      activityEvents.forEach((event) => window.removeEventListener(event, resetIdleTimer));
+    };
+  }, [key]);
 
   const load = async (retryAttempt = 0) => {
     if (!key) return;
