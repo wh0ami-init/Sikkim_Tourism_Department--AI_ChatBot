@@ -88,16 +88,16 @@ const destinationGallery: Record<string, string[]> = {
   ],
 
   "yumthang-valley": [
-    "/images/D_D_Box/Yumthang_Valley/Rhododendron.webp",
+    "/images/D_D_Box/Yumthang_Valley/Rhododendron.jpg",
     "/images/D_D_Box/Yumthang_Valley/Hotsprings.webp",
     "/images/D_D_Box/Yumthang_Valley/Shingba.webp",
   ],
 };
 
 const fallbackGallery = [
-  "/images/D_D_Box/Gangtok.png",
-  "/images/D_D_Box/Tsomgo_Lake.jpeg",
-  "/images/D_D_Box/Yumthang_Valley.jpeg",
+  "/images/Gangtok.png",
+  "/images/Tsomgo_Lake.jpeg",
+  "/images/Yumthang_Valley.jpeg",
 ];
 
 function galleryFor(destination: Destination) {
