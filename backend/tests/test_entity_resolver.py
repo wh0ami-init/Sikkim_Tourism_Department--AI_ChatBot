@@ -31,3 +31,28 @@ async def test_single_clear_fuzzy_match_returns_ambiguity_candidates():
 
     assert resolution.status == "ambiguous"
     assert [agency.name for agency in resolution.candidates or []] == ["Alpha Tours"]
+
+
+@pytest.mark.asyncio
+async def test_directory_abbreviation_matches_a_visitor_friendly_agency_name():
+    class AbbreviatedDirectoryRepository:
+        async def get_travel_agency_by_name(self, _name, district=None):
+            return None
+
+        async def search_travel_agencies(self, _query, limit=25):
+            return [
+                TravelAgency(
+                    name="M/s Denizen T&T",
+                    registration_number="1542/DoT&Cav/E/23/TA",
+                    district="Gangtok",
+                )
+            ]
+
+    resolution = await resolve_travel_agency(
+        AbbreviatedDirectoryRepository(),
+        "Give me full details on Denizen Tours and Travels.",
+    )
+
+    assert resolution.status == "matched"
+    assert resolution.agency is not None
+    assert resolution.agency.name == "M/s Denizen T&T"

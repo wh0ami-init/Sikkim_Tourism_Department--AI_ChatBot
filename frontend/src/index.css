@@ -190,17 +190,17 @@
   --chat-surface: rgba(19, 43, 43, 0.72);
   --chat-border: rgba(173, 224, 213, 0.13);
   --chat-border-strong: rgba(173, 224, 213, 0.24);
-  --chat-ink: #EDF8F4;
-  --chat-ink-soft: #BED6CE;
-  --chat-ink-muted: #91AEA4;
-  --chat-ink-faint: #68857C;
+  --chat-ink: #F4FCF8;
+  --chat-ink-soft: #C7DED6;
+  --chat-ink-muted: #A6C2B8;
+  --chat-ink-faint: #7F9E93;
   --chat-pine: #0B6758;
   --chat-pine-alt: #137966;
   --chat-pine-on: #FFFFFF;
 
   --chat-accent: #F7C65B;
   --chat-accent-soft: rgba(247, 198, 91, 0.17);
-  --chat-assistant-bubble: rgba(209, 240, 230, 0.08);
+  --chat-assistant-bubble: rgba(26, 66, 60, 0.9);
   --chat-launcher-fg: #FFFFFF;
   --chat-launcher-surface: rgba(16, 39, 40, 0.78);
   --chat-launcher-hint-bg: rgba(16, 39, 40, 0.82);

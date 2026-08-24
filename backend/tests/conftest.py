@@ -31,12 +31,16 @@ os.environ.setdefault("GROQ_API_KEY", "")
 os.environ.setdefault("ADMIN_API_KEY", "test-admin-key-for-pytest")
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
+# Never allow a developer's local scraper setting to start a browser or make
+# network calls while running the deterministic offline test suite.
+os.environ["ENABLE_CIRCULAR_SCRAPER"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.database.factory import get_repo
 from app.districts import normalize_district
+from app.limiting import limiter
 from app.models.schemas import AdminUser, Conversation, Destination, DestinationWrite, Message, TravelAgency
 from main import app
 
@@ -124,6 +128,7 @@ class TestRepository:
         return next((m for m in self.messages if m.conversation_id == conversation_id and m.client_message_id == client_message_id), None)
     async def list_messages(self, conversation_id): return [m for m in self.messages if m.conversation_id == conversation_id]
     async def list_circulars(self, category=None, limit=10): return []
+    async def count_circulars(self, category=None): return 0
     async def circular_exists(self, pdf_hash): return False
     async def save_circular(self, circular): return circular
     async def delete_circular(self, circular_id): return False
@@ -141,6 +146,14 @@ class TestRepository:
 @pytest.fixture(scope="session")
 def repository():
     return TestRepository()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Keep offline tests independent of public request-rate counters."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest.fixture(scope="session")

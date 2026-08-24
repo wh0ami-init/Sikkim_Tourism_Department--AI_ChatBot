@@ -117,7 +117,10 @@ function ThinkingIndicator({ isImage = false }: { isImage?: boolean }) {
 function sanitizeMarkdown(text: string): string {
   return text
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/?(?:p|div|span)\b[^>]*>/gi, "");
+    .replace(/<\/?(?:p|div|span)\b[^>]*>/gi, "")
+    // Models occasionally pad a Markdown table with blank `| | |` rows.
+    // They render as a large empty panel, so discard those non-content rows.
+    .replace(/^\s*\|(?:\s*\|)+\s*$/gm, "");
 }
 
 /* ── Assistant markdown renderer. Sober, readable, brand-coloured links. ── */
@@ -141,7 +144,7 @@ function AssistantMessage({
         components={{
           p: ({ children }) => <p className="leading-[1.6]">{children}</p>,
           strong: ({ children }) => (
-            <strong style={{ color: theme.pine, fontWeight: 600 }}>
+            <strong style={{ color: theme.ink, fontWeight: 700 }}>
               {children}
             </strong>
           ),
@@ -220,7 +223,7 @@ function AssistantMessage({
           ),
           table: ({ children }) => (
             <div
-              className="chat-table my-2 w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border touch-pan-x"
+              className="chat-table my-2 inline-block h-auto min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-md border text-left leading-tight touch-pan-x [&_p]:m-0 [&_p]:leading-tight"
               style={{
                 borderColor: theme.border,
                 WebkitOverflowScrolling: "touch",
@@ -229,14 +232,14 @@ function AssistantMessage({
               aria-label="Scrollable response table"
               tabIndex={0}
             >
-              <table className="w-full min-w-[18rem] table-fixed border-collapse text-xs sm:w-max sm:min-w-[34rem] sm:text-sm">
+              <table className="h-auto w-full min-w-[30rem] table-fixed border-collapse text-xs sm:min-w-0 sm:text-sm [&_tbody]:h-auto [&_thead]:h-auto [&_tr]:h-auto [&>thead>tr>th:first-child]:w-[46%] [&>thead>tr>th:nth-child(2)]:w-[19%] [&>thead>tr>th:nth-child(3)]:w-[35%]">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
             <th
-              className="break-words px-2 py-1.5 text-left font-semibold border-b sm:whitespace-nowrap"
+              className="break-words border-b px-2 py-2 text-left font-semibold leading-tight sm:whitespace-nowrap"
               style={{ borderColor: theme.border, background: theme.bgDeep }}
             >
               {children}
@@ -244,8 +247,8 @@ function AssistantMessage({
           ),
           td: ({ children }) => (
             <td
-              className="break-words px-2 py-1.5 align-top border-b"
-              style={{ borderColor: theme.border, maxWidth: "14rem" }}
+              className="break-words border-b px-2 py-2 align-top leading-tight"
+              style={{ borderColor: theme.border }}
             >
               {children}
             </td>
@@ -557,6 +560,7 @@ function Bubble({
 }) {
   const theme = useChatTheme();
   const isUser = msg.role === "user";
+  const hasTable = !isUser && /(^|\n)\s*\|.+\|\s*\n\s*\|?\s*:?-{3,}/.test(msg.content);
 
   return (
     <motion.div
@@ -588,7 +592,7 @@ function Bubble({
       )}
 
       <div
-        className={`min-w-0 ${isUser ? "max-w-[85%] sm:max-w-[78%]" : "max-w-[92%] sm:max-w-[88%]"}`}
+        className={`min-w-0 ${isUser ? "max-w-[85%] sm:max-w-[78%]" : hasTable ? "max-w-[92%] sm:max-w-full" : "max-w-[92%] sm:max-w-[88%]"}`}
       >
         {!isUser && showTime && (
           <div
@@ -656,16 +660,6 @@ function Bubble({
             <ThinkingIndicator isImage={isImageTurn} />
           )}
         </motion.div>
-
-        {/* Provenance line — only for longer assistant answers. */}
-        {!isUser && msg.content && msg.content.length > 180 && (
-          <p
-            className="mt-1.5 text-[0.62rem] tracking-wide"
-            style={{ color: theme.inkFaint }}
-          >
-            Grounded in official Department records.
-          </p>
-        )}
 
         {/* Action row: copy + feedback. Visible once the response has
                     finished streaming — no longer tied to hover state, so it

@@ -25,7 +25,7 @@ import logging
 import re
 from collections.abc import AsyncGenerator
 from functools import lru_cache
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 from langchain_core.messages import (
@@ -150,10 +150,26 @@ _SYSTEM_PROMPT = (
     "official information is not current or specific enough, say so honestly. "
     "Never fill a gap with a guess.\n\n"
 
+    "SOURCE DISCLOSURE — REQUIRED:\n"
+    "Never describe an answer as 'official', 'verified', or 'as per official "
+    "sources' unless the supplied context contains a relevant application "
+    "record or an official Sikkim Tourism website result. For a date-sensitive "
+    "answer based on a supplied record, include a short final source line with "
+    "the source name and the issue date when available. If no such record is "
+    "supplied, say that a verified current record is not available; do not make "
+    "a table, date, schedule, price, closure, or permit decision look official.\n\n"
+
+    "EVENTS AND FESTIVALS:\n"
+    "Do not create or infer an upcoming event schedule from general knowledge. "
+    "Only provide dates, locations, or a current schedule when they appear in "
+    "supplied official context. Cultural background about established Sikkim "
+    "festivals is allowed when the visitor is not asking for current dates.\n\n"
+
     "When a source URL is supplied in context, include it only when it is "
-    "useful and reproduce it exactly. Never fabricate a URL, phone number, "
-    "registration number, price, permit approval, booking, closure, or "
-    "government decision.\n\n"
+    "useful and reproduce it exactly. Never fabricate, shorten, repair, or "
+    "guess a URL. If no source URL is supplied in the context, do not cite a "
+    "link. Never fabricate a phone number, registration number, price, permit "
+    "approval, booking, closure, or government decision.\n\n"
 
     # ----------------------------------------------------------------------
     # SAFETY
@@ -271,8 +287,9 @@ _SYSTEM_PROMPT = (
 
     "LIVE WEB RESULTS:\n"
     "The context may include a section labelled "
-    "'--- LIVE WEB SEARCH RESULTS — SECONDARY SOURCE ---'. These are live "
-    "internet search results fetched for the current request.\n\n"
+    "'--- TRUSTED LIVE WEB SEARCH RESULTS — SECONDARY SOURCE ---'. These are "
+    "live internet search results fetched for the current request from "
+    "trusted official/government domains only.\n\n"
 
     "Treat these results as SECONDARY information. They are useful for "
     "supplementing official records and for finding current information when "
@@ -283,7 +300,7 @@ _SYSTEM_PROMPT = (
     "non-official web result.\n\n"
 
     "Official Sikkim Tourism website results are more authoritative than "
-    "ordinary external websites, but application-supplied official "
+    "other trusted government web pages, but application-supplied official "
     "Department records still take precedence when they explicitly contain "
     "the required fact.\n\n"
 
@@ -879,6 +896,44 @@ def _is_official_sikkim_url(
         return False
 
 
+_TRUSTED_WEB_DOMAINS = (
+    "sikkimtourism.gov.in",
+    "sikkim.gov.in",
+    "tourism.gov.in",
+    "india.gov.in",
+    "sikkimpolice.nic.in",
+    "imd.gov.in",
+)
+
+
+def _is_trusted_sikkim_source_url(
+        url: str,
+) -> bool:
+    """Return True for trusted official/government Sikkim travel sources."""
+    try:
+        hostname = (
+                urlparse(url).hostname
+                or ""
+        ).lower().rstrip(".")
+    except Exception:
+        return False
+
+    return any(
+        hostname == domain or hostname.endswith(f".{domain}")
+        for domain in _TRUSTED_WEB_DOMAINS
+    )
+
+
+def _canonical_official_sikkim_url(url: str) -> str:
+    """Prefer HTTPS when Tavily returns the official site with http://."""
+    if not _is_official_sikkim_url(url):
+        return url
+    parsed = urlparse(url)
+    if parsed.scheme == "http":
+        return urlunparse(parsed._replace(scheme="https"))
+    return url
+
+
 async def _tavily_search(
         query: str,
         official_only: bool = False,
@@ -887,8 +942,9 @@ async def _tavily_search(
     Query Tavily for current Sikkim information.
 
     When official_only=True, the search is restricted to the official
-    Sikkim Tourism domain. This is used for government-controlled facts
-    where an official web source is preferable to arbitrary listings.
+    Sikkim Tourism domain. Otherwise, it is still restricted to trusted
+    government/official domains; arbitrary web links are never supplied to
+    the answer model.
     """
 
     if not settings.tavily_api_key:
@@ -896,32 +952,60 @@ async def _tavily_search(
 
     scoped_query = f"{query} Sikkim India"
 
+    search_queries = [scoped_query]
+    if official_only:
+        # Official-domain searches can be too narrow when a visitor phrases a
+        # general tourism question as "upcoming events" while the Department
+        # page is indexed as "fairs and festivals" or "tourism calendar".
+        # Retry with broader official tourism vocabulary, without inventing or
+        # hardcoding a URL.
+        search_queries.append(
+            f"{query} Sikkim fairs festivals tourism calendar notice official"
+        )
+
     try:
         async with httpx.AsyncClient(
                 timeout=8.0
         ) as client:
 
-            payload = {
-                "api_key": settings.tavily_api_key,
-                "query": scoped_query,
-                "search_depth": "basic",
-                "max_results": 5,
-                "include_answer": True,
-            }
+            data = None
+            for search_query in search_queries:
+                payload = {
+                    "api_key": settings.tavily_api_key,
+                    "query": search_query,
+                    "search_depth": "basic",
+                    "max_results": 5,
+                    "include_answer": True,
+                }
 
-            if official_only:
-                payload["include_domains"] = [
-                    "sikkimtourism.gov.in"
-                ]
+                payload["include_domains"] = (
+                    ["sikkimtourism.gov.in"]
+                    if official_only
+                    else list(_TRUSTED_WEB_DOMAINS)
+                )
 
-            response = await client.post(
-                "https://api.tavily.com/search",
-                json=payload,
-            )
+                response = await client.post(
+                    "https://api.tavily.com/search",
+                    json=payload,
+                )
 
-            response.raise_for_status()
+                response.raise_for_status()
 
-            data = response.json()
+                candidate = response.json()
+                candidate_results = (candidate or {}).get("results", [])
+                if any(
+                    (
+                        _is_official_sikkim_url((result or {}).get("url", ""))
+                        if official_only
+                        else _is_trusted_sikkim_source_url((result or {}).get("url", ""))
+                    )
+                    and (result or {}).get("content")
+                    for result in candidate_results
+                ):
+                    data = candidate
+                    break
+                if data is None:
+                    data = candidate
 
     except Exception as exc:
         logger.warning(
@@ -933,16 +1017,12 @@ async def _tavily_search(
 
     parts: list[str] = []
 
-    answer = (
-            data or {}
-    ).get("answer")
+    answer = (data or {}).get("answer")
 
-    if answer:
-        parts.append(
-            "--- TAVILY SEARCH SUMMARY "
-            "(NOT AN OFFICIAL DEPARTMENT RECORD) ---\n"
-            f"{answer}"
-        )
+    # Tavily's generated summary is not a primary source and may combine
+    # multiple pages. Use only attributable page snippets and exact source
+    # URLs so the assistant cannot present unsupported search summaries as
+    # verified facts.
 
     for result in (
             data or {}
@@ -970,13 +1050,23 @@ async def _tavily_search(
             url
         )
 
+        if official_only and not is_official:
+            continue
+
+        if not official_only and not _is_trusted_sikkim_source_url(url):
+            continue
+
+        if is_official:
+            url = _canonical_official_sikkim_url(url)
+
         source_type = (
             "OFFICIAL SIKKIM TOURISM WEBSITE"
             if is_official
-            else "NON-OFFICIAL WEB SOURCE"
+            else "TRUSTED GOVERNMENT WEB SOURCE"
         )
 
-        snippet = content[:500]
+        snippet_limit = 1200 if official_only else 900
+        snippet = content[:snippet_limit]
 
         parts.append(
             f"[{source_type}]\n"
@@ -986,6 +1076,16 @@ async def _tavily_search(
         )
 
     return "\n\n".join(parts)
+
+
+async def search_official_sikkim_tourism(query: str) -> str:
+    """Return attributable official-site search results for high-risk facts.
+
+    Permit, fee, and access questions must never fall back to general web
+    summaries. This helper deliberately returns an empty string unless Tavily
+    provides content from the Department's own HTTPS domain.
+    """
+    return await _tavily_search(query, official_only=True)
 
 
 # ============================================================================
@@ -1105,10 +1205,7 @@ async def _retrieve_context_step(
 
     web = ""
 
-    if (
-            settings.tavily_api_key
-            and _needs_live_search(question)
-    ):
+    if settings.tavily_api_key:
         is_official_fact = _is_official_fact_question(
             question
         )
@@ -1127,9 +1224,10 @@ async def _retrieve_context_step(
                 official_only=True,
             )
 
-        elif not has_any_official_context:
-            # For ordinary current travel information where no official
-            # record is already available, broader web search is useful.
+        elif not has_any_official_context or _needs_live_search(question):
+            # If the database/vectorstore did not retrieve a relevant record,
+            # use only trusted government/official sources. Do not pass
+            # arbitrary web pages to the model.
             web = await _tavily_search(
                 question,
                 official_only=False,
@@ -1151,15 +1249,15 @@ async def _retrieve_context_step(
 
     if web:
         web_block = (
-            "--- LIVE WEB SEARCH RESULTS — SECONDARY SOURCE ---\n"
+            "--- TRUSTED LIVE WEB SEARCH RESULTS — SECONDARY SOURCE ---\n"
             "These results were fetched from the internet for this request. "
             "They are supplementary information and MUST NOT override an "
             "explicit application-supplied official Department record. "
             "Official Sikkim Tourism website results are more authoritative "
-            "than ordinary external websites, but application-supplied "
+            "than other trusted government web pages, but application-supplied "
             "Department records still have the highest priority.\n\n"
             f"{web}\n"
-            "--- END LIVE WEB SEARCH RESULTS ---"
+            "--- END TRUSTED LIVE WEB SEARCH RESULTS ---"
         )
 
         combined_parts.append(
@@ -1280,8 +1378,8 @@ async def stream_rag_response(
 
     if not settings.groq_api_key:
         yield (
-            "GROQ_API_KEY is not configured. "
-            "Add it to your .env file and restart."
+            "The chat service is temporarily unavailable. "
+            "Please try again shortly."
         )
         return
 
@@ -1417,8 +1515,8 @@ async def stream_rag_response_with_image(
 
     if not settings.gemini_api_key:
         yield (
-            "Image analysis requires a Gemini API key. "
-            "Please add GEMINI_API_KEY to your .env file and restart."
+            "Image analysis is temporarily unavailable. "
+            "Please try again shortly or ask your question in text."
         )
         return
 

@@ -61,6 +61,11 @@ class BaseRepository(ABC):
         ...
 
     @abstractmethod
+    async def count_circulars(self, category: str | None = None) -> int:
+        """Return the exact number of official circulars, optionally by category."""
+        ...
+
+    @abstractmethod
     async def circular_exists(self, pdf_hash: str) -> bool:
         """True if a circular with this exact PDF hash has already been ingested."""
         ...

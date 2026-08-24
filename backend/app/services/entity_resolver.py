@@ -42,6 +42,11 @@ _REQUEST_PREFIXES = (
 def normalize_entity_name(value: str) -> str:
     """Normalize a business name for comparison without losing identity words."""
     value = unicodedata.normalize("NFKC", value or "").casefold()
+    # Directory records often use a legal/business prefix and abbreviate
+    # "Tours and Travels" as "T&T".  Neither changes the agency identity,
+    # so normalise both before comparing names supplied by visitors.
+    value = re.sub(r"^\s*m\s*/\s*s\.?\s+", "", value)
+    value = re.sub(r"\bt\s*(?:&|and)\s*t\b", "tours and travels", value)
     value = value.replace("&", " and ")
     value = re.sub(r"[^\w\s]", " ", value, flags=re.UNICODE)
     value = re.sub(r"\s+", " ", value).strip()
@@ -64,7 +69,7 @@ def extract_agency_name(message: str) -> str:
 
         # Prefer the text after an information-intent preposition.
         candidate = re.sub(
-            r"^.*?\b(?:details?|information|info|contact(?:\s+details?)?|phone(?:\s+number)?|email(?:\s+address)?|registration(?:\s+number)?|reg(?:istration)?\.?\s*no\.?)\s+(?:of|for|about)\s+",
+            r"^.*?\b(?:full\s+)?(?:details?|information|info|contact(?:\s+details?)?|phone(?:\s+number)?|email(?:\s+address)?|registration(?:\s+number)?|reg(?:istration)?\.?\s*no\.?)\s+(?:of|for|about|on)\s+",
             "", candidate, flags=re.I, count=1,
         )
         candidate = re.sub(r"^about\s+", "", candidate, flags=re.I)

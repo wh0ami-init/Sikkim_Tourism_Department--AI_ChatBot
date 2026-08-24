@@ -213,11 +213,35 @@ class MySQLRepository(BaseRepository):
         """
         for attempt in range(4):
             try:
-                return self._pool.get_connection()
+                conn = self._pool.get_connection()
+                try:
+                    conn.ping(reconnect=True, attempts=1, delay=0)
+                except mysql.connector.Error as exc:
+                    logger.warning("MySQL pooled connection ping failed: %s", exc)
+                    self._close_connection(conn)
+                    if attempt == 3:
+                        raise
+                    time.sleep(0.05 * (attempt + 1))
+                    continue
+                return conn
             except mysql.connector.PoolError:
                 if attempt == 3:
                     raise
                 time.sleep(0.05 * (attempt + 1))
+
+    @staticmethod
+    def _close_connection(conn) -> None:
+        """Return a pooled connection without surfacing reset/close failures.
+
+        Aiven/MySQL can drop an idle TLS connection while mysql-connector's
+        pool still holds it. In that case ``conn.close()`` may fail while
+        resetting the session after the query has already completed. That
+        cleanup failure must not become a visitor-facing 500.
+        """
+        try:
+            conn.close()
+        except mysql.connector.Error as exc:
+            logger.warning("Ignoring MySQL connection close/reset failure: %s", exc)
 
     def _query(self, sql: str, params: tuple = ()) -> list[dict]:
         """Run a read query and always return the connection to the pool."""
@@ -231,7 +255,7 @@ class MySQLRepository(BaseRepository):
             finally:
                 cursor.close()
         finally:
-            conn.close()
+            self._close_connection(conn)
 
     def _execute(self, sql: str, params: tuple = ()) -> int:
         """
@@ -253,7 +277,7 @@ class MySQLRepository(BaseRepository):
                 # returned to the pool by the outer finally block.
                 cursor.close()
         finally:
-            conn.close()
+            self._close_connection(conn)
 
     # ── Admin accounts ─────────────────────────────────────────────────────
 
@@ -314,6 +338,19 @@ class MySQLRepository(BaseRepository):
             (*params, limit),
         )
         return [_row_to_circular(r) for r in rows]
+
+    async def count_circulars(self, category: str | None = None) -> int:
+        clauses, params = [], []
+        if category:
+            clauses.append("category = %s")
+            params.append(category)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = await asyncio.to_thread(
+            self._query,
+            f"SELECT COUNT(*) AS total FROM circulars {where}",
+            tuple(params),
+        )
+        return int(rows[0]["total"]) if rows else 0
 
     async def circular_exists(self, pdf_hash: str) -> bool:
         rows = await asyncio.to_thread(
@@ -517,6 +554,17 @@ class MySQLRepository(BaseRepository):
         if exact:
             return [exact]
 
+        tokens = [
+            t for t in re.findall(r"[A-Za-z0-9]+", raw.casefold())
+            if len(t) > 1 and t not in {
+                "the", "and", "for", "of", "in", "on", "at", "to", "a", "an",
+                # These are common legal/business descriptors, not identity
+                # terms.  Searching them first can hide a real agency whose
+                # directory spelling uses an abbreviation such as "T&T".
+                "travel", "travels", "tour", "tours", "agency", "agencies",
+            }
+        ][:20]
+
         # FULLTEXT gets a wider candidate pool than the old top-5 query.
         # The resolver will decide which candidate, if any, is safe to use.
         fulltext_rows = await asyncio.to_thread(
@@ -527,18 +575,11 @@ class MySQLRepository(BaseRepository):
             "ORDER BY relevance DESC LIMIT %s",
             (raw, raw, max(limit, 25)),
         )
-        if fulltext_rows:
-            return [_row_to_travel_agency(r) for r in fulltext_rows[:limit]]
-
-        # LIKE fallback: use every meaningful token, but fetch a large pool and
-        # rank it in Python.  This avoids the old bug where an unordered LIMIT
-        # could fill the pool with unrelated agencies containing generic words.
-        tokens = [
-            t for t in re.findall(r"[A-Za-z0-9]+", raw.casefold())
-            if len(t) > 1 and t not in {"the", "and", "for", "of", "in", "on", "at", "to", "a", "an"}
-        ][:20]
+        # Always run the identity-token LIKE search too. FULLTEXT can omit a
+        # record when the visitor's spelling uses an abbreviation stored in
+        # the directory (for example, "Tours and Travels" vs. "T&T").
         if not tokens:
-            return []
+            return [_row_to_travel_agency(r) for r in fulltext_rows[:limit]]
 
         clauses: list[str] = []
         params: list = []
@@ -548,12 +589,36 @@ class MySQLRepository(BaseRepository):
             clauses.append("(LOWER(name) LIKE %s ESCAPE '!' OR LOWER(proprietor) LIKE %s ESCAPE '!')")
             params.extend([like, like])
 
-        rows = await asyncio.to_thread(
+        # Require every identity token first. An OR search for a broad term
+        # such as "Sikkim" can fill the candidate limit before the actual
+        # "Enchanting Sikkim" record is returned. If a visitor supplied a
+        # variant with an additional word, fall back to the broader OR search.
+        like_rows = await asyncio.to_thread(
             self._query,
-            f"SELECT * FROM travel_agencies WHERE {' OR '.join(clauses)} ORDER BY name ASC LIMIT %s",
+            f"SELECT * FROM travel_agencies WHERE {' AND '.join(clauses)} ORDER BY name ASC LIMIT %s",
             (*params, max(limit, 100)),
         )
-        return [_row_to_travel_agency(r) for r in rows[:limit]]
+        if not like_rows:
+            like_rows = await asyncio.to_thread(
+                self._query,
+                f"SELECT * FROM travel_agencies WHERE {' OR '.join(clauses)} ORDER BY name ASC LIMIT %s",
+                (*params, max(limit, 100)),
+            )
+
+        # Prefer the direct identity matches, then add FULLTEXT candidates
+        # without duplicating registration records. The resolver will perform
+        # the final exact/normalised/fuzzy choice.
+        merged_rows = []
+        seen_registrations = set()
+        for row in [*like_rows, *fulltext_rows]:
+            registration = row.get("registration_number")
+            if registration in seen_registrations:
+                continue
+            seen_registrations.add(registration)
+            merged_rows.append(row)
+            if len(merged_rows) >= limit:
+                break
+        return [_row_to_travel_agency(r) for r in merged_rows]
 
     # ── Destinations ────────────────────────────────────────────────────────
 

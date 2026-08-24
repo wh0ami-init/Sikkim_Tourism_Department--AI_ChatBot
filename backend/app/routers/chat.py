@@ -24,6 +24,8 @@ import secrets
 import hashlib
 import logging
 import re
+from datetime import date
+from difflib import get_close_matches
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -40,6 +42,7 @@ from app.services.rag_chain import (
     stream_rag_response,
     stream_rag_response_with_image,
     generate_followups,
+    search_official_sikkim_tourism,
 )
 
 logger = logging.getLogger(__name__)
@@ -143,7 +146,8 @@ def _needs_agency_lookup(message: str) -> bool:
 
 
 _AGENCY_LISTING_PHRASES = (
-    "list all", "list agencies", "list travel agencies", "list the agencies",
+    "list all", "list agencies", "list of agencies", "list travel agencies",
+    "list of travel agencies", "list the agencies",
     "how many agencies", "how many travel agencies", "how many agency",
     "all agencies", "all travel agencies", "agencies in", "travel agencies in",
     "agencies registered in", "agencies are there", "agencies operate",
@@ -199,6 +203,40 @@ _CIRCULAR_INVENTORY_PHRASES = (
     "how many report", "how many cancellation", "how many notice",
     "list all road status", "list the road status",
     "all road status reports", "which road status reports", "what dates",
+    "recent cancellation order", "recent cancellation orders",
+    "any recent cancellation order", "any recent cancellation orders",
+)
+
+_CIRCULAR_INVENTORY_SAMPLE_LIMIT = 20
+
+_CURRENT_EVENT_WORDS = ("event", "events", "festival", "festivals", "celebration", "celebrations")
+_NAMED_FESTIVAL_TERMS = ("pang lhabsol", "losar", "bumchu", "saga dawa", "tendong lho rum fat")
+_CURRENT_EVENT_QUALIFIERS = (
+    "upcoming", "current", "currently", "latest", "next", "this week",
+    "this month", "this year", "today", "tomorrow", "schedule", "calendar",
+    "happening", "date", "dates", "when",
+)
+
+_EMERGENCY_TERMS = ("stranded", "landslide", "accident", "injured", "emergency", "trapped", "rescue")
+_MEDICAL_TERMS = ("altitude sickness", "medicine", "medication", "diamox", "acetazolamide", "dexamethasone")
+_AGENCY_RECOMMENDATION_TERMS = ("recommend", "recommended", "best", "suggest")
+_OFFICIAL_FACT_TERMS = ("permit", "permits", "entry fee", "entry fees", "ticket price", "ticket prices")
+_RESTRICTED_ACCESS_TERMS = (
+    "foreign tourist", "foreign tourists", "foreign national", "foreign nationals",
+    "foreign visitor", "foreign visitors", "restricted area",
+)
+_DESTINATION_LIST_TERMS = (
+    "destination", "destinations", "place", "places", "attraction", "attractions",
+    "visit", "see", "sightseeing",
+)
+_DESTINATION_DETAIL_TERMS = (
+    "about", "detail", "details", "information", "info", "where", "location",
+    "reach", "how to reach", "best time", "highlights", "things to do",
+    "altitude", "category",
+)
+_PERMIT_OVERVIEW_TERMS = (
+    "how many", "types", "type", "kinds", "kind", "which permits",
+    "what permits", "list permits", "permits are there", "permit categories",
 )
 
 
@@ -254,6 +292,603 @@ def _needs_circular_inventory(message: str) -> bool:
     return "how many" in text and any(word in text for word in ("road", "report", "circular", "notice", "cancellation"))
 
 
+def _inventory_circular_category(message: str) -> str | None:
+    """Select a category only when the visitor explicitly asks for one."""
+    text = " ".join(message.lower().split())
+    if "road" in text:
+        return "road_status"
+    if "cancellation" in text:
+        return "cancellation_order"
+    if "tender" in text:
+        return "tender"
+    return None
+
+
+def _needs_current_event_verification(message: str) -> bool:
+    """Identify date-sensitive event questions that require a verified record."""
+    text = " ".join(message.lower().split())
+    return (
+        any(word in text for word in _CURRENT_EVENT_WORDS)
+        and (
+            any(qualifier in text for qualifier in _CURRENT_EVENT_QUALIFIERS)
+            or bool(re.search(r"\b20\d{2}\b", text))
+        )
+    )
+
+
+def _official_event_search_query(message: str) -> str:
+    """Bias official-domain search toward the Department's event pages."""
+    return f"{message} festival fair notice newsletter"
+
+
+def _needs_emergency_response(message: str) -> bool:
+    return any(term in message.casefold() for term in _EMERGENCY_TERMS)
+
+
+def _needs_medical_response(message: str) -> bool:
+    return any(term in message.casefold() for term in _MEDICAL_TERMS)
+
+
+def _needs_agency_recommendation(message: str) -> bool:
+    text = message.casefold()
+    return (
+        any(term in text for term in _AGENCY_LOOKUP_PHRASES)
+        and any(term in text for term in _AGENCY_RECOMMENDATION_TERMS)
+    )
+
+
+def _needs_exact_official_fact(message: str) -> bool:
+    text = message.casefold()
+    return any(term in text for term in _OFFICIAL_FACT_TERMS) or any(
+        term in text for term in _RESTRICTED_ACCESS_TERMS
+    )
+
+
+async def _needs_permit_overview_response(repo: BaseRepository, message: str) -> bool:
+    """Route broad permit-category questions away from destination fee lookup."""
+    text = " ".join(message.casefold().split())
+    if "permit" not in text:
+        return False
+    if not any(term in text for term in _PERMIT_OVERVIEW_TERMS):
+        return False
+
+    try:
+        destinations = await repo.list_destinations()
+    except Exception:
+        destinations = []
+
+    named_destinations = _find_named_destinations(message, destinations) if destinations else []
+    if named_destinations and not any(term in text for term in ("sikkim", "overall", "all permits", "types")):
+        return False
+    return True
+
+
+def _format_permit_overview_response() -> str:
+    """Explain Sikkim permit categories without inventing a destination rule."""
+    return (
+        "For visitors, Sikkim permits are best understood as **2 main permit regimes**, "
+        "with route- or purpose-specific permits issued under them:\n\n"
+        "1. **RAP / Restricted Area Permit** — mainly for foreign nationals entering Sikkim under the restricted-area regime.\n"
+        "2. **PAP / Protected Area Permit** — for protected/border areas and specific destinations or activities.\n\n"
+        "Common tourist permit paths include:\n"
+        "- **Nathula permit** — issued for eligible Indian nationals through registered travel agencies.\n"
+        "- **Two-wheeler / biker permit** — required for motorbike travel into specified protected areas.\n"
+        "- **Trekking / mountaineering permits** — handled through the relevant Tourism/Adventure Cell process where applicable.\n\n"
+        "The exact permit depends on nationality, destination, route, vehicle, and activity.\n\n"
+        "Sources: https://sikkimtourism.gov.in/rap and https://www.sikkimtourism.gov.in/pap"
+    )
+
+
+def _needs_destination_list_response(message: str) -> bool:
+    """True when the user asks for an official catalogue list, not narrative advice."""
+    text = " ".join(message.casefold().split())
+    return _needs_full_destination_context(message) or (
+        _extract_district(message) is not None
+        and any(term in text for term in _DESTINATION_LIST_TERMS)
+    )
+
+
+def _format_destination_record(destination) -> list[str]:
+    """Render one destination record exactly as stored in the Department catalogue."""
+    permit = (
+        destination.permit_info
+        if destination.permit_required and destination.permit_info
+        else ("Required" if destination.permit_required else "No permit requirement is recorded.")
+    )
+    lines = [
+        f"**{destination.name}**",
+        f"- District: {destination.district}",
+        f"- Category: {destination.category}",
+        f"- Location: {destination.location}",
+    ]
+    if destination.altitude:
+        lines.append(f"- Altitude: {destination.altitude}")
+    lines.extend([
+        f"- Best time: {destination.best_time}",
+        f"- Entry fee: {destination.entry_fee or 'No entry fee is recorded.'}",
+        f"- Permit: {permit}",
+        f"- How to reach: {destination.how_to_reach}",
+    ])
+    if destination.highlights:
+        lines.append("- Highlights: " + ", ".join(destination.highlights))
+    lines.append("")
+    lines.append(destination.description)
+    return lines
+
+
+def _find_named_destinations(message: str, destinations: list) -> list:
+    """Return catalogue destinations explicitly named by the visitor."""
+    question = " ".join(message.casefold().split())
+    exact = [
+        destination
+        for destination in destinations
+        if destination.name.casefold() in question
+    ]
+    if exact:
+        return exact
+
+    # Keep fuzzy matching conservative and catalogue-bounded. This catches
+    # small typos in a known destination without mapping an unknown place to a
+    # plausible official record.
+    words = re.findall(r"[a-z]{4,}", question)
+    candidates = words + [" ".join(words[index:index + 2]) for index in range(len(words) - 1)]
+    catalogue_names = [destination.name.casefold() for destination in destinations]
+    matched_names = {
+        match
+        for candidate in candidates
+        for match in get_close_matches(candidate, catalogue_names, n=1, cutoff=0.85)
+    }
+    return [
+        destination
+        for destination in destinations
+        if destination.name.casefold() in matched_names
+    ]
+
+
+async def _format_destination_catalog_response(repo: BaseRepository, message: str) -> str | None:
+    """Answer destination catalogue questions without model-generated facts."""
+    try:
+        destinations = await repo.list_destinations()
+    except Exception as exc:
+        logger.warning("Could not load destination catalogue: %s", exc)
+        return (
+            "I could not retrieve the official destination catalogue at the moment. "
+            "Please try again shortly."
+        )
+
+    if not destinations:
+        return "I do not currently have any official destination records on file."
+
+    district = _extract_district(message)
+    text = " ".join(message.casefold().split())
+    wants_list = _needs_destination_list_response(message)
+    named = [] if wants_list else _find_named_destinations(message, destinations)
+
+    if named:
+        lines = []
+        for index, destination in enumerate(named):
+            if index:
+                lines.append("")
+            lines.extend(_format_destination_record(destination))
+        lines.extend([
+            "",
+            "Source: Official Department destination catalogue. Current access, fees, and permits should be confirmed before travel.",
+        ])
+        return "\n".join(lines)
+
+    if district and wants_list:
+        matches = [
+            destination for destination in destinations
+            if normalize_district(destination.district) == district
+        ]
+        if not matches:
+            return (
+                f"I do not currently have official destination records for {district} in the catalogue."
+            )
+        lines = [
+            f"There are **{len(matches)}** official destination records for {district} in the Department catalogue.",
+            "",
+        ]
+        for destination in matches:
+            lines.append(
+                f"- **{destination.name}** ({destination.category}) — Best time: {destination.best_time}; "
+                f"Permit: {'Required' if destination.permit_required else 'No permit requirement recorded'}."
+            )
+        lines.extend([
+            "",
+            "Source: Official Department destination catalogue.",
+        ])
+        return "\n".join(lines)
+
+    if _needs_full_destination_context(message):
+        lines = [
+            f"There are **{len(destinations)}** official destination records in the Department catalogue.",
+            "",
+        ]
+        for destination in destinations:
+            lines.append(
+                f"- **{destination.name}** ({destination.district}, {destination.category}) — "
+                f"Best time: {destination.best_time}."
+            )
+        lines.extend([
+            "",
+            "Ask about a specific destination for its full official record.",
+            "",
+            "Source: Official Department destination catalogue.",
+        ])
+        return "\n".join(lines)
+
+    # If the user is clearly asking for a catalogue fact but no destination
+    # name matched, fail closed instead of letting the model invent a record.
+    if any(term in text for term in _DESTINATION_DETAIL_TERMS) and any(
+        term in text for term in ("destination", "place", "attraction", "monastery", "lake", "valley", "park")
+    ):
+        return (
+            "I could not match that place to an official destination record in the Department catalogue. "
+            "Please check the spelling or ask using the destination name listed in the catalogue."
+        )
+
+    return None
+
+
+def _format_emergency_response() -> str:
+    return (
+        "If you are in immediate danger, contact local emergency services or the nearest police, "
+        "medical, or road authority now. Move only if it is safe to do so, avoid unstable slopes "
+        "and blocked roads, and follow instructions from on-site authorities.\n\n"
+        "This chat is not monitored for emergencies and cannot dispatch assistance."
+    )
+
+
+def _format_medical_response() -> str:
+    return (
+        "I can provide only general travel-safety information, not medical diagnosis or medication "
+        "instructions. If altitude symptoms develop, do not continue ascending; rest, seek local "
+        "medical advice promptly, and descend if symptoms are severe or worsening.\n\n"
+        "Please consult a qualified clinician before travel, especially if you have existing health conditions."
+    )
+
+
+def _format_agency_recommendation_response() -> str:
+    return (
+        "The Department does not rank or endorse private travel agencies. You may verify a specific "
+        "registered agency by name, and I can provide its official directory record when available."
+    )
+
+
+async def _format_exact_official_fact(repo: BaseRepository, message: str) -> str:
+    """Return only structured catalogue facts for permit and fee questions."""
+    try:
+        destinations = await repo.list_destinations()
+    except Exception as exc:
+        logger.warning("Could not load destination catalogue for official-fact response: %s", exc)
+        destinations = []
+
+    question = " ".join(message.casefold().split())
+    matches = [destination for destination in destinations if destination.name.casefold() in question]
+    if not matches:
+        # Visitors commonly transpose or omit a character in a destination name
+        # (for example, "gangokt"). Match only against the small, verified
+        # catalogue and retain a conservative threshold so an unknown place is
+        # never silently mapped to a different destination.
+        words = re.findall(r"[a-z]{4,}", question)
+        candidates = words + [" ".join(words[index:index + 2]) for index in range(len(words) - 1)]
+        catalogue_names = [destination.name.casefold() for destination in destinations]
+        matched_names = {
+            match
+            for candidate in candidates
+            for match in get_close_matches(candidate, catalogue_names, n=1, cutoff=0.85)
+        }
+        matches = [
+            destination
+            for destination in destinations
+            if destination.name.casefold() in matched_names
+        ]
+    if matches:
+        lines = []
+        for destination in matches:
+            lines.extend([
+                f"**{destination.name}**",
+                f"- Permit: {destination.permit_info if destination.permit_required and destination.permit_info else ('Required' if destination.permit_required else 'No permit requirement is recorded.')}",
+                f"- Entry fee: {destination.entry_fee or 'No entry fee is recorded.'}",
+            ])
+        lines.extend([
+            "",
+            "Source: Department destination catalogue. Permit rules, access, and fees can change; confirm before travel.",
+        ])
+        return "\n".join(lines)
+
+    return (
+        "I do not have a verified Department destination record that confirms the current permit or fee "
+        "for that place. Please verify it with the Tourism and Civil Aviation Department before travel."
+    )
+
+
+def _official_web_source_note(context: str) -> str:
+    """Build a short visitor-facing citation from verified Tavily result URLs."""
+    urls = list(dict.fromkeys(
+        _canonical_official_source_url(url)
+        for url in re.findall(r"Source URL:\s*(https?://[^\s]+)", context)
+    ))
+    if not urls:
+        return ""
+    return "\n\nSource: Official Sikkim Tourism website — " + ", ".join(urls[:2])
+
+
+_OFFICIAL_FACT_QUERY_STOPWORDS = frozenset({
+    "about", "access", "allowed", "and", "are", "current", "do", "entry", "fee",
+    "fees", "for", "foreign", "from", "have", "how", "i", "is", "me", "need",
+    "of", "or", "pass", "permit", "permits", "please", "required", "requirement",
+    "the", "to", "tourist", "tourists", "travel", "visit", "what", "with", "you",
+})
+
+
+def _official_fact_topic_terms(message: str) -> set[str]:
+    """Extract place-specific terms used to reject unrelated search results."""
+    return {
+        term
+        for term in re.findall(r"[a-z]{3,}", message.casefold())
+        if term not in _OFFICIAL_FACT_QUERY_STOPWORDS
+    }
+
+
+def _format_official_web_fallback(context: str, message: str) -> str:
+    """Present only relevant official-site excerpts without model-added facts."""
+    records = re.findall(
+        r"\[OFFICIAL SIKKIM TOURISM WEBSITE\]\s*\n"
+        r"Title:\s*(.*?)\s*\n"
+        r"Content:\s*(.*?)\s*\n"
+        r"Source URL:\s*(https?://\S+)",
+        context,
+        flags=re.DOTALL,
+    )
+    if not records:
+        return (
+            "I found an official Sikkim Tourism page, but could not extract a reliable answer from it. "
+            "Please use the official link below to confirm the current requirement."
+            + _official_web_source_note(context)
+        )
+
+    topic_terms = _official_fact_topic_terms(message)
+    fact_markers = ("permit", "pap", "rap", "ilp", "entry fee", "fee", "price", "ticket")
+    asks_fact = any(marker in message.casefold() for marker in _OFFICIAL_FACT_TERMS)
+    relevant_records = [
+        record
+        for record in records
+        if not topic_terms
+        or any(term in f"{record[0]} {record[1]}".casefold() for term in topic_terms)
+    ]
+    if asks_fact:
+        relevant_records = [
+            record for record in relevant_records
+            if any(marker in f"{record[0]} {record[1]}".casefold() for marker in fact_markers)
+        ]
+        non_homepage_records = [
+            record for record in relevant_records
+            if re.sub(r"^https?://(?:www\.)?sikkimtourism\.gov\.in/?$", "", record[2].strip(), flags=re.I)
+        ]
+        if non_homepage_records:
+            relevant_records = non_homepage_records
+    if not relevant_records:
+        return (
+            "I could not find a relevant official Sikkim Tourism page that confirms this current "
+            "permit or fee. I will not use an unrelated page as evidence. Please confirm with the "
+            "Tourism and Civil Aviation Department before travel."
+        )
+
+    lines = [
+        "I found the following information on the official Sikkim Tourism website. "
+        "Please confirm the current requirement from the linked page before travel.",
+    ]
+    for title, content, url in relevant_records[:2]:
+        excerpt = " ".join(content.split())[:900]
+        lines.extend(["", f"**{title.strip()}**", excerpt, f"Source: {_canonical_official_source_url(url)}"])
+    return "\n".join(lines)
+
+
+def _format_unverified_event_response() -> str:
+    """Avoid presenting model knowledge as an official, current event schedule."""
+    return (
+        "I searched for official Sikkim Tourism event information, but I could not find a dated "
+        "upcoming schedule for that period. I can help with festival background, but I will not "
+        "invent dates or venues and present them as official.\n\n"
+        "For newly published notices, check https://sikkimtourism.gov.in/updates/notice before making travel plans."
+    )
+
+
+def _format_official_event_web_fallback(context: str, message: str) -> str:
+    """Render published event information from official-site search results.
+
+    Event dates are volatile, so this deliberately quotes only attributable
+    Department-page excerpts. It never asks the language model to infer a
+    calendar from general knowledge or an uncited search summary.
+    """
+    records = re.findall(
+        r"\[OFFICIAL SIKKIM TOURISM WEBSITE\]\s*\n"
+        r"Title:\s*(.*?)\s*\n"
+        r"Content:\s*(.*?)\s*\n"
+        r"Source URL:\s*(https?://\S+)",
+        context,
+        flags=re.DOTALL,
+    )
+    event_markers = ("event", "festival", "celebration", "calendar", "fair", "carnival")
+    requested_years = set(re.findall(r"\b20\d{2}\b", message))
+    question = message.casefold()
+    if not requested_years and any(
+        qualifier in question for qualifier in _CURRENT_EVENT_QUALIFIERS
+    ):
+        # A "next" or "upcoming" answer must be tied to the current or next
+        # calendar year. A timeless cultural-description page is not evidence
+        # of a scheduled event.
+        requested_years = {str(date.today().year), str(date.today().year + 1)}
+
+    def has_scheduled_date(record: tuple[str, str, str]) -> bool:
+        """Require a calendar date, not merely a year on an awards page."""
+        text = f"{record[0]} {record[1]}"
+        months = (
+            r"january|february|march|april|may|june|july|august|"
+            r"september|october|november|december"
+        )
+        day_then_month = rf"\b\d{{1,2}}(?:st|nd|rd|th)?\s+(?:{months})\s+20\d{{2}}\b"
+        month_then_day = rf"\b(?:{months})\s+\d{{1,2}}(?:st|nd|rd|th)?(?:,)?\s+20\d{{2}}\b"
+        return bool(re.search(day_then_month, text, flags=re.I) or re.search(month_then_day, text, flags=re.I))
+
+    def clean_title(title: str) -> str:
+        title = " ".join(title.split()).strip(" -")
+        title = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", title)
+        return title or "Official Sikkim Tourism information"
+
+    def clean_excerpt(title: str, content: str, *, named_terms: list[str] | None = None) -> str:
+        """Remove search-provider metadata accidentally embedded in snippets."""
+        content = re.split(r"\s*(?:\[OFFICIAL SIKKIM TOURISM WEBSITE\]|Source URL:)", content, maxsplit=1)[0]
+        content = re.sub(rf"^\s*Title:\s*{re.escape(title.strip())}\s*", "", content, flags=re.I)
+        content = re.sub(r"^\s*STDC\s*\([^)]*\)\.\s*", "", content, flags=re.I)
+        if named_terms:
+            lowered = content.casefold()
+            positions = [lowered.find(term) for term in named_terms if lowered.find(term) >= 0]
+            if positions:
+                content = content[min(positions):]
+                next_topic = re.search(
+                    r"\s+(?:This is the main festival|One of the most famous|Cherry Tea Festival|"
+                    r"Pelling Winter Tourism Festival|Bumchu festival|Tendong Lho rum Faat)\b",
+                    content[80:],
+                    flags=re.I,
+                )
+                if next_topic:
+                    content = content[:80 + next_topic.start()]
+        else:
+            lowered = content.casefold()
+            focus_terms = (
+                "pang lhabsol", "losar", "bumchu", "saga dawa", "tendong lho rum faat",
+                "cherry tea festival", "pelling winter tourism festival", "festival",
+            )
+            positions = [lowered.find(term) for term in focus_terms if lowered.find(term) >= 0]
+            if positions:
+                content = content[min(positions):]
+        return " ".join(content.split())[:850]
+
+    def source_label(url: str) -> str:
+        url = _canonical_official_source_url(url)
+        if re.search(r"^https://(?:www\.)?sikkimtourism\.gov\.in/updates/notice/?$", url, flags=re.I):
+            return f"Source: {url}"
+        return "Source: Official Sikkim Tourism website."
+
+    def extract_known_festival_names(records_to_scan: list[tuple[str, str, str]]) -> list[str]:
+        known_names = (
+            "Pang Lhabsol",
+            "Saga Dawa",
+            "Cherry Tea Festival",
+            "Pelling Winter Tourism Festival",
+            "Bumchu",
+            "Tendong Lho Rum Faat",
+            "Indrajatra",
+            "Dasain",
+            "Losar",
+            "Maghe Sankranti",
+            "Sonam Lochar",
+        )
+        found: list[str] = []
+        seen: set[str] = set()
+        text = " ".join(f"{title} {content}" for title, content, _url in records_to_scan)
+        for name in known_names:
+            if re.search(rf"\b{re.escape(name)}\b", text, flags=re.I):
+                key = name.casefold()
+                if key not in seen:
+                    found.append(name)
+                    seen.add(key)
+        return found
+
+    def is_event_page(record: tuple[str, str, str]) -> bool:
+        title, content, url = record
+        title_and_content = f"{title} {content}".casefold()
+        source_path = url.casefold()
+        return (
+            any(marker in title_and_content for marker in event_markers)
+            and (
+                any(marker in title.casefold() for marker in event_markers)
+                or any(marker in source_path for marker in ("festival", "fair", "newsletter", "notice", "notification"))
+            )
+        )
+
+    official_event_records = []
+    seen_event_urls = set()
+    for record in records:
+        if not is_event_page(record):
+            continue
+        url_key = _canonical_official_source_url(record[2]).casefold()
+        if url_key in seen_event_urls:
+            continue
+        seen_event_urls.add(url_key)
+        official_event_records.append(record)
+    named_terms = [term for term in _NAMED_FESTIVAL_TERMS if term in question]
+    if named_terms:
+        named_records = [
+            record for record in official_event_records
+            if any(term in f"{record[0]} {record[1]}".casefold() for term in named_terms)
+        ]
+        if named_records:
+            official_event_records = named_records
+    scheduled_event_records = [
+        record for record in official_event_records
+        if has_scheduled_date(record)
+        and (
+            not requested_years
+            or any(year in f"{record[0]} {record[1]}" for year in requested_years)
+        )
+    ]
+    if scheduled_event_records:
+        lines = [
+            "I found the following published event information on the official Sikkim Tourism website. "
+            "Please confirm dates and availability from the linked page before making travel plans.",
+        ]
+        for title, content, url in scheduled_event_records[:2]:
+            lines.extend(["", f"**{clean_title(title)}**", clean_excerpt(title, content, named_terms=named_terms), source_label(url)])
+        return "\n".join(lines)
+
+    if not official_event_records:
+        return _format_unverified_event_response()
+
+    if _needs_current_event_verification(message):
+        lines = [
+            "I found official Sikkim Tourism information about festivals/events, but not a dated upcoming schedule for the period asked. "
+            "Use this as background, not as a confirmed current event calendar.",
+        ]
+        if not named_terms:
+            festival_names = extract_known_festival_names(official_event_records)
+            if festival_names:
+                lines.extend([
+                    "",
+                    "The official tourism information mentions these festivals/events:",
+                    *[f"- {name}" for name in festival_names[:10]],
+                    "",
+                    source_label(official_event_records[0][2]),
+                ])
+                return "\n".join(lines)
+    else:
+        lines = [
+            "I found the following official Sikkim Tourism information.",
+        ]
+    max_records = 1 if named_terms else 2
+    for title, content, url in official_event_records[:max_records]:
+        lines.extend(["", f"**{clean_title(title)}**", clean_excerpt(title, content, named_terms=named_terms), source_label(url)])
+    return "\n".join(lines)
+
+
+def _needs_festival_information(message: str) -> bool:
+    text = message.casefold()
+    return any(word in text for word in _CURRENT_EVENT_WORDS) or any(
+        term in text for term in _NAMED_FESTIVAL_TERMS
+    )
+
+
+def _format_unverified_festival_response() -> str:
+    return (
+        "I could not retrieve a relevant official Sikkim Tourism source for that festival right now. "
+        "You can still ask for general cultural background, but confirm current dates or venues from "
+        "https://sikkimtourism.gov.in/updates/notice before making travel plans."
+    )
+
+
 async def _build_latest_circulars_context(
         repo: BaseRepository,
         *,
@@ -294,6 +929,134 @@ async def _build_latest_circulars_context(
     return "\n".join(lines)
 
 
+async def _format_circular_inventory(repo: BaseRepository, message: str) -> str:
+    """Return a bounded, exact inventory without placing full OCR into an LLM prompt."""
+    category = _inventory_circular_category(message)
+    labels = {
+        "road_status": "road-status records",
+        "cancellation_order": "cancellation orders",
+        "tender": "tenders",
+    }
+    label = labels.get(category, "official notices and circulars")
+    try:
+        total = await repo.count_circulars(category=category)
+        circulars = await repo.list_circulars(
+            category=category,
+            limit=_CIRCULAR_INVENTORY_SAMPLE_LIMIT,
+        )
+    except Exception as exc:
+        logger.warning("Could not load official circular inventory: %s", exc)
+        return (
+            "I could not retrieve the official notice inventory at the moment. "
+            "Please try again shortly or check https://sikkimtourism.gov.in/updates/notice."
+        )
+
+    if total == 0:
+        return f"There are currently no {label} on file in the official department records."
+
+    lines = [f"There are **{total}** {label} on file in the official department records."]
+    if circulars:
+        heading = "The latest records are:" if total <= len(circulars) else (
+            f"The latest {len(circulars)} records are listed below:"
+        )
+        lines.extend(["", heading, ""])
+        for circular in circulars:
+            district = f" ({circular.district})" if circular.district else ""
+            source = (
+                f" — [source]({circular.source_url})"
+                if circular.source_url.startswith("https://")
+                else ""
+            )
+            lines.append(f"- {circular.issue_date}: **{circular.title}**{district}{source}")
+    if total > len(circulars):
+        lines.extend([
+            "",
+            "This is a latest-records sample. Ask about a particular date or title for more detail.",
+        ])
+    return "\n".join(lines)
+
+
+async def _format_latest_circulars_response(repo: BaseRepository, message: str) -> str:
+    """Return latest dated official notices without asking the LLM to infer status."""
+    text = " ".join(message.casefold().split())
+    category = "road_status" if any(word in text for word in ("road", "nathula", "nathu la", "north sikkim")) else None
+    requested_district = _extract_district(message)
+    requested_day_match = re.search(r"\b([0-3]?\d)(?:st|nd|rd|th)?\b", text)
+    try:
+        circulars = await repo.list_circulars(category=category, limit=5)
+    except Exception as exc:
+        logger.warning("Could not load latest circulars: %s", exc)
+        return (
+            "I could not retrieve the latest official notices at the moment. "
+            "Please check https://sikkimtourism.gov.in/updates/notice."
+        )
+
+    if not circulars:
+        subject = "road-status" if category == "road_status" else "notice"
+        return (
+            f"I do not currently have a dated official {subject} record that answers this request. "
+            "Please check https://sikkimtourism.gov.in/updates/notice or confirm with the local tourism office before travel."
+        )
+
+    if category == "road_status" and requested_district:
+        matching_circulars = [
+            circular for circular in circulars
+            if normalize_district(circular.district) == requested_district
+            or requested_district.casefold() in f"{circular.title} {circular.extracted_text}".casefold()
+        ]
+        if matching_circulars:
+            circulars = matching_circulars
+        else:
+            return (
+                f"I do not currently have a dated official road-status record for {requested_district} in the latest records on file. "
+                "I will not use a record for another district as the current status. "
+                "Please check https://sikkimtourism.gov.in/updates/notice or confirm with the local tourism office before travel."
+            )
+    if category == "road_status" and requested_day_match:
+        requested_day = int(requested_day_match.group(1))
+        matching_circulars = [
+            circular for circular in circulars
+            if re.search(rf"\b0?{requested_day}\b", circular.issue_date)
+            or re.search(rf"\b0?{requested_day}(?:st|nd|rd|th)?\b", circular.extracted_text or "", flags=re.I)
+        ]
+        if matching_circulars:
+            circulars = matching_circulars
+        else:
+            return (
+                f"I do not currently have a dated official road-status record for the {requested_day_match.group(0)} in the latest records on file. "
+                "Please check https://sikkimtourism.gov.in/updates/notice or confirm with the local tourism office before travel."
+            )
+
+    lines = [
+        "I found these latest dated official records. I will not infer that a road is open or closed unless a record says so clearly.",
+        "",
+    ]
+    for circular in circulars:
+        source = (
+            f" — [source]({circular.source_url})"
+            if circular.source_url.startswith("https://")
+            else ""
+        )
+        excerpt_text = " ".join((circular.extracted_text or "").split())
+        excerpt = excerpt_text[:420]
+        if requested_district and excerpt_text:
+            for alias in district_filter_values(requested_district):
+                match = re.search(rf"\b{re.escape(alias)}\b", excerpt_text, flags=re.I)
+                if match:
+                    start = max(0, match.start() - 120)
+                    excerpt = excerpt_text[start:start + 520]
+                    break
+        lines.append(f"- {circular.issue_date}: **{circular.title}**{source}")
+        if excerpt:
+            lines.append(f"  {excerpt}")
+
+    lines.extend([
+        "",
+        "Source: Official Tourism and Civil Aviation Department notices. Check the linked notice page before travel because road status can change quickly.",
+    ])
+    return "\n".join(lines)
+
+
 def _format_verified_agency(agency) -> str:
     """Render a verified MySQL agency row without an LLM rewriting its facts."""
     lines = [f"**{agency.name}**"]
@@ -313,6 +1076,11 @@ def _format_verified_agency(agency) -> str:
             lines.append(f"- {label}: {value}")
     if len(lines) == 1:
         lines.append("- No additional official details are currently on file.")
+    synced_at = getattr(agency, "synced_at", None)
+    if synced_at:
+        lines.extend(["", f"Source: Official department travel-agency directory (record synced {synced_at:%Y-%m-%d} UTC)."])
+    else:
+        lines.extend(["", "Source: Official department travel-agency directory."])
     return "\n".join(lines)
 
 
@@ -334,7 +1102,7 @@ def _format_agency_suggestions(candidates: list, *, query_name: str = "") -> str
 
 
 def _format_agency_resolution_failure(resolution) -> str:
-    if resolution.candidates:
+    if resolution.status == "ambiguous" and resolution.candidates:
         return _format_agency_suggestions(
             resolution.candidates,
             query_name=resolution.query_name or "",
@@ -424,6 +1192,16 @@ _OFFICIAL_LINKS_CONTEXT = (
 )
 
 
+def _canonical_official_source_url(url: str) -> str:
+    """Keep visitor-facing official tourism links on HTTPS."""
+    return re.sub(
+        r"^http://((?:www\.)?sikkimtourism\.gov\.in)",
+        r"https://\1",
+        url.strip(),
+        flags=re.I,
+    )
+
+
 async def _build_agency_context(repo: BaseRepository, message: str, *, limit: int = 5) -> str:
     try:
         agencies = await repo.search_travel_agencies(message, limit=limit)
@@ -482,6 +1260,71 @@ async def _build_agency_directory_context(
     ]
     for a in sample:
         lines.append(f"- {a.name} (Reg. No. {a.registration_number})")
+    return "\n".join(lines)
+
+
+async def _format_agency_directory_response(
+        repo: BaseRepository, message: str, *, sample_limit: int = 15,
+) -> str:
+    """Return exact registered-agency counts/lists without an LLM."""
+    district = _extract_district(message)
+    text = " ".join(message.casefold().split())
+    wants_full_details = any(
+        phrase in text
+        for phrase in ("full detail", "full details", "contact", "contacts", "address", "phone", "email")
+    )
+    try:
+        total = await repo.count_travel_agencies(district=district)
+        effective_limit = total if wants_full_details and district and total <= 25 else sample_limit
+        sample = await repo.list_travel_agencies(district=district, limit=effective_limit)
+    except Exception as exc:
+        logger.warning("Could not load travel agency directory: %s", exc)
+        return (
+            "I could not retrieve the official travel-agency directory at the moment. "
+            "Please try again shortly."
+        )
+
+    scope = f" in {district}" if district else " in Sikkim"
+    if total == 0:
+        return f"I do not currently have any registered travel agencies on file{scope}."
+
+    lines = [
+        f"There are **{total}** registered travel agencies{scope} in the official department directory."
+    ]
+    if any(word in text for word in ("list", "all", "show", "which")) and sample:
+        if wants_full_details and district and total <= 25:
+            lines.extend(["", "Official records:"])
+            for agency in sample:
+                lines.append(f"- **{agency.name}**")
+                fields = (
+                    ("Registration No.", agency.registration_number),
+                    ("Proprietor", agency.proprietor),
+                    ("Grade", agency.grade),
+                    ("Contact", agency.contact),
+                    ("Email / Website", agency.email_or_website),
+                    ("Address", agency.address),
+                    ("Date of Issue", agency.date_of_issue),
+                    ("Renewed Upto", agency.renewed_upto),
+                )
+                added_detail = False
+                for label, value in fields:
+                    if value not in (None, ""):
+                        lines.append(f"  - {label}: {value}")
+                        added_detail = True
+                if not added_detail:
+                    lines.append("  - No additional official details are currently on file.")
+        else:
+            lines.extend(["", f"First {len(sample)} records alphabetically:"])
+            for agency in sample:
+                district_label = f" — {agency.district}" if agency.district and not district else ""
+                lines.append(f"- **{agency.name}**{district_label} (Reg. No. {agency.registration_number})")
+        if total > len(sample):
+            lines.extend([
+                "",
+                "This is a bounded sample. Ask for a specific agency name to get its full official record.",
+            ])
+
+    lines.extend(["", "Source: Official department travel-agency directory."])
     return "\n".join(lines)
 
 
@@ -562,6 +1405,42 @@ async def _build_district_destinations_context(repo: BaseRepository, district: s
             f"- {d.name} ({d.district}, category: {d.category}): {d.description} "
             f"Best time: {d.best_time}. Entry fee: {entry_fee}. {permit}. "
             f"How to reach: {d.how_to_reach}"
+        )
+    return "\n".join(lines)
+
+
+async def _build_named_destinations_context(repo: BaseRepository, message: str) -> str:
+    """Inject exact official records for destinations explicitly named by a visitor."""
+    try:
+        destinations = await repo.list_destinations()
+    except Exception as exc:
+        logger.warning("Could not load named destinations for extra_context: %s", exc)
+        return ""
+
+    question = " ".join(message.casefold().split())
+    matches = [
+        destination
+        for destination in destinations
+        if destination.name.casefold() in question
+    ]
+    if not matches:
+        return ""
+
+    lines = [
+        "OFFICIAL SIKKIM TOURISM DEPARTMENT — NAMED DESTINATION RECORDS "
+        "(these are the exact places named by the visitor):"
+    ]
+    for destination in matches:
+        permit = (
+            f"Permit required ({destination.permit_info})"
+            if destination.permit_required
+            else "No permit required"
+        )
+        lines.append(
+            f"- {destination.name} ({destination.district}, category: {destination.category}): "
+            f"{destination.description} Best time: {destination.best_time}. "
+            f"Entry fee: {destination.entry_fee or 'Free'}. {permit}. "
+            f"How to reach: {destination.how_to_reach}"
         )
     return "\n".join(lines)
 
@@ -721,6 +1600,56 @@ async def send_message(
             # phone numbers and addresses are database facts, not language-model
             # facts.
             if not has_image:
+                if _needs_emergency_response(body.message):
+                    deterministic = _format_emergency_response()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_medical_response(body.message):
+                    deterministic = _format_medical_response()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_agency_recommendation(body.message):
+                    deterministic = _format_agency_recommendation_response()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_agency_directory_listing(body.message, history):
+                    deterministic = await _format_agency_directory_response(repo, body.message)
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if await _needs_permit_overview_response(repo, body.message):
+                    deterministic = _format_permit_overview_response()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_exact_official_fact(body.message):
+                    deterministic = await _format_exact_official_fact(repo, body.message)
+                    if deterministic.startswith("I do not have a verified Department destination record"):
+                        official_web_context = await search_official_sikkim_tourism(body.message)
+                        if official_web_context:
+                            deterministic = _format_official_web_fallback(official_web_context, body.message)
+                            assistant_chunks.append(deterministic)
+                            yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                            return
+
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                destination_response = await _format_destination_catalog_response(repo, body.message)
+                if destination_response:
+                    assistant_chunks.append(destination_response)
+                    yield f"data: {json.dumps({'text': destination_response})}\n\n"
+                    return
+
                 # Follow-up: tourist is choosing from a numbered shortlist we
                 # offered on the previous turn ("1", "first one", partial name).
                 suggested = _previous_agency_suggestions(history)
@@ -772,6 +1701,53 @@ async def send_message(
                             agency_exc,
                         )
 
+                # Inventory questions are also answered directly from MySQL.
+                # Full circular OCR can be lengthy and is unnecessary when a
+                # visitor asks for a count or a list of notices; returning a
+                # bounded, dated inventory keeps the reply accurate and fast.
+                if _needs_circular_inventory(body.message):
+                    deterministic = await _format_circular_inventory(repo, body.message)
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_latest_circulars(body.message, history):
+                    deterministic = await _format_latest_circulars_response(repo, body.message)
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                # Events are time-sensitive public information. Until the
+                # application has a verified event-record feed, query only the
+                # Department website before answering. Never let a language
+                # model turn general knowledge into an official-looking
+                # calendar, date, or venue recommendation.
+                if _needs_current_event_verification(body.message):
+                    official_web_context = await search_official_sikkim_tourism(
+                        _official_event_search_query(body.message)
+                    )
+                    deterministic = (
+                        _format_official_event_web_fallback(official_web_context, body.message)
+                        if official_web_context
+                        else _format_unverified_event_response()
+                    )
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_festival_information(body.message):
+                    official_web_context = await search_official_sikkim_tourism(
+                        _official_event_search_query(body.message)
+                    )
+                    if official_web_context:
+                        deterministic = _format_official_event_web_fallback(
+                            official_web_context,
+                            body.message,
+                        )
+                        assistant_chunks.append(deterministic)
+                        yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                        return
+
             if has_image:
                 # Vision path — Gemini multimodal
                 stream = stream_rag_response_with_image(
@@ -790,6 +1766,9 @@ async def send_message(
                     if dest_context:
                         context_parts.append(dest_context)
                 else:
+                    named_context = await _build_named_destinations_context(repo, body.message)
+                    if named_context:
+                        context_parts.append(named_context)
                     # No broad "list everything" phrase, but if the message
                     # names a specific district, give the model that
                     # district's exact MySQL records directly instead of
@@ -801,13 +1780,10 @@ async def send_message(
                         district_context = await _build_district_destinations_context(repo, district)
                         if district_context:
                             context_parts.append(district_context)
-                inventory = _needs_circular_inventory(body.message)
-                if _needs_latest_circulars(body.message, history) or inventory:
-                    road_status_inventory = inventory and "road" in body.message.lower()
+                if _needs_latest_circulars(body.message, history):
                     circular_context = await _build_latest_circulars_context(
                         repo,
-                        limit=250 if inventory else 5,
-                        category="road_status" if road_status_inventory else None,
+                        limit=5,
                     )
                     if circular_context:
                         context_parts.append(circular_context)
