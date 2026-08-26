@@ -26,25 +26,6 @@ import {
 import { advisoryFileUrl, fetchAdvisories, fetchDestinations, type Advisory, type DestinationSummary } from "@/lib/api";
 import { heroVideo } from "@/config/hero-media";
 
-const gridContainerVariants: Variants = {
-  hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.25,
-    },
-  },
-};
-
-const gridItemVariants: Variants = {
-  hidden: { opacity: 0, y: 60, scale: 0.94 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
 const sectionHeaderVariants: Variants = {
   hidden: { opacity: 0, y: 48 },
   show: {
@@ -184,6 +165,7 @@ function AdvisoryPreview({ advisory, onClose }: { advisory: Advisory; onClose: (
 export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [popularDestinations, setPopularDestinations] = useState<DestinationSummary[]>([]);
+  const [popularIndex, setPopularIndex] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [advisories, setAdvisories] = useState<Record<Advisory["category"], Advisory[]>>({
     road_status: [], cancellation_order: [], tender: [],
@@ -192,11 +174,12 @@ export default function Home() {
   const [heroTitleIndex, setHeroTitleIndex] = useState(0);
   const [typedHeroTitle, setTypedHeroTitle] = useState("");
   const [isErasingHeroTitle, setIsErasingHeroTitle] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     const controller = new AbortController();
     fetchDestinations(undefined, undefined, controller.signal)
-        .then((all) => setPopularDestinations(all.slice(0, 3)))
+        .then((all) => setPopularDestinations(all.slice(0, 8)))
         .catch((err: unknown) => {
           if (err instanceof Error && err.name === "AbortError") return;
           console.error("Failed to load popular destinations:", err);
@@ -204,6 +187,14 @@ export default function Home() {
         });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (popularDestinations.length < 2 || shouldReduceMotion) return;
+    const interval = window.setInterval(() => {
+      setPopularIndex((current) => (current + 1) % popularDestinations.length);
+    }, 5_000);
+    return () => window.clearInterval(interval);
+  }, [popularDestinations.length, shouldReduceMotion]);
 
   useEffect(() => {
     const title = heroTitles[heroTitleIndex];
@@ -251,6 +242,37 @@ export default function Home() {
     const refresh = window.setInterval(() => void loadAdvisories(), 5 * 60_000);
     return () => { controller.abort(); window.clearInterval(refresh); };
   }, []);
+
+  const showPreviousDestination = () => {
+    setPopularIndex((current) => (
+      popularDestinations.length
+          ? (current - 1 + popularDestinations.length) % popularDestinations.length
+          : 0
+    ));
+  };
+
+  const showNextDestination = () => {
+    setPopularIndex((current) => (
+      popularDestinations.length
+          ? (current + 1) % popularDestinations.length
+          : 0
+    ));
+  };
+
+  const visibleDestinationOffsets = popularDestinations.length > 2
+      ? [-1, 0, 1]
+      : popularDestinations.length === 2
+          ? [0, 1]
+          : popularDestinations.length === 1
+              ? [0]
+              : [];
+
+  const visibleDestinations = visibleDestinationOffsets.length
+      ? visibleDestinationOffsets.map((offset) => {
+        const index = (popularIndex + offset + popularDestinations.length) % popularDestinations.length;
+        return { dest: popularDestinations[index], offset };
+      })
+      : [];
 
   const highlights = [
     {
@@ -317,7 +339,9 @@ export default function Home() {
                     className="mt-8 flex flex-wrap items-center justify-center gap-3 animate-rise-fade"
                     style={{ animationDelay: "340ms" }}
                 >
-                  <Link href="/destinations" aria-label="Explore destinations" title="Explore destinations" className="group inline-flex h-12 w-12 items-center justify-end overflow-hidden rounded-full bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(39,122,107,0.32)] transition-[width,transform,box-shadow] duration-500 ease-out hover:w-52 hover:-translate-y-0.5 hover:shadow-[0_20px_46px_rgba(39,122,107,0.38)] focus-visible:w-52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"><span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-300 group-hover:max-w-36 group-hover:opacity-100 group-focus-visible:max-w-36 group-focus-visible:opacity-100">Explore destinations</span><span className="flex h-12 w-12 shrink-0 items-center justify-center"><ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" /></span></Link>
+                  <span className="hero-cta-release inline-flex rounded-full">
+                    <Link href="/explore" aria-label="Explore destinations" title="Explore destinations" className="group inline-flex h-12 w-12 items-center justify-end overflow-hidden rounded-full bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(39,122,107,0.32)] transition-[width,transform,box-shadow] duration-500 ease-out hover:w-52 hover:-translate-y-0.5 hover:shadow-[0_20px_46px_rgba(39,122,107,0.38)] focus-visible:w-52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"><span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-300 group-hover:max-w-36 group-hover:opacity-100 group-focus-visible:max-w-36 group-focus-visible:opacity-100">Explore destinations</span><span className="flex h-12 w-12 shrink-0 items-center justify-center"><ArrowRight className="hero-cta-arrow h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" /></span></Link>
+                  </span>
                 </div>
                 <p className="mt-5 text-xs font-medium text-white/75 [text-shadow:0_2px_10px_rgba(0,0,0,0.4)] animate-rise-fade sm:hidden" style={{ animationDelay: "420ms" }}>Need route or permit help? Use the chat icon below.</p>
               </div>
@@ -453,22 +477,95 @@ export default function Home() {
                 <p className="mb-4 text-sm text-destructive">{loadError}</p>
             )}
 
-            <motion.div
-                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
-                variants={gridContainerVariants}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, amount: 0.15 }}
-            >
-              {popularDestinations.map((dest) => (
-                  <motion.div key={dest.id} variants={gridItemVariants}>
-                    <DestinationCard
-                        dest={dest}
-                        onClick={() => setSelectedId(dest.id)}
-                    />
+            <div className="relative">
+              <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -inset-x-4 top-10 bottom-12 rounded-[2rem] bg-[radial-gradient(circle_at_50%_35%,hsl(var(--primary)/0.12),transparent_44%),radial-gradient(circle_at_80%_70%,hsl(var(--secondary)/0.13),transparent_34%)] blur-2xl"
+              />
+
+              <div className="relative overflow-hidden px-0 py-7 sm:px-14">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.div
+                      key={popularDestinations.map((dest) => dest.id).join("-") + popularIndex}
+                      className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-3"
+                      initial={shouldReduceMotion ? false : { opacity: 0, x: 24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={shouldReduceMotion ? undefined : { opacity: 0, x: -24 }}
+                      transition={{ duration: shouldReduceMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    {visibleDestinations.map(({ dest, offset }) => (
+                        <motion.div
+                            key={`${dest.id}-${offset}`}
+                            className={offset === 0 ? "relative z-10" : "hidden sm:block"}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 26, scale: offset === 0 ? 0.96 : 0.9 }}
+                            animate={{
+                              opacity: offset === 0 ? 1 : 0.68,
+                              y: offset === 0 ? -6 : 12,
+                              scale: offset === 0 ? 1 : 0.9,
+                            }}
+                            transition={{ duration: shouldReduceMotion ? 0 : 0.55, ease: [0.16, 1, 0.3, 1] }}
+                        >
+                          <DestinationCard
+                              dest={dest}
+                              onClick={() => setSelectedId(dest.id)}
+                          />
+                        </motion.div>
+                    ))}
                   </motion.div>
-              ))}
-            </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {popularDestinations.length > 1 && (
+                  <>
+                    <button
+                        type="button"
+                        onClick={showPreviousDestination}
+                        aria-label="Show previous popular destination"
+                        className="focus-ring absolute left-1 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border/75 bg-background/82 text-foreground shadow-[0_14px_34px_rgba(15,23,42,0.13)] backdrop-blur-xl transition hover:-translate-x-0.5 hover:border-primary/35 hover:text-primary sm:flex"
+                    >
+                      <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={showNextDestination}
+                        aria-label="Show next popular destination"
+                        className="focus-ring absolute right-1 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-primary/25 bg-primary text-primary-foreground shadow-[0_16px_36px_rgba(22,107,82,0.28)] backdrop-blur-xl transition hover:translate-x-0.5 hover:bg-[#0b5a46] sm:flex"
+                    >
+                      <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <div className="mt-2 flex items-center justify-center gap-2 sm:hidden">
+                      <button
+                          type="button"
+                          onClick={showPreviousDestination}
+                          aria-label="Show previous popular destination"
+                          className="focus-ring flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-sm"
+                      >
+                        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <div className="flex items-center gap-1.5 px-2">
+                        {popularDestinations.map((dest, index) => (
+                            <button
+                                key={dest.id}
+                                type="button"
+                                onClick={() => setPopularIndex(index)}
+                                aria-label={`Show ${dest.name}`}
+                                aria-current={index === popularIndex ? "true" : undefined}
+                                className={`h-2 rounded-full transition-all duration-300 ${index === popularIndex ? "w-6 bg-primary" : "w-2 bg-primary/25"}`}
+                            />
+                        ))}
+                      </div>
+                      <button
+                          type="button"
+                          onClick={showNextDestination}
+                          aria-label="Show next popular destination"
+                          className="focus-ring flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+                      >
+                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </>
+              )}
+            </div>
           </div>
         </section>
 

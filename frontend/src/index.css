@@ -321,6 +321,37 @@
   .admin-console-banner { animation: none; }
 }
 
+.navbar-light-sweep {
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  animation: navbar-light-sweep 8s ease-in-out infinite;
+}
+
+@keyframes navbar-light-sweep {
+  0%, 22% {
+    opacity: 0;
+    transform: translateX(-125%) skewX(-14deg);
+  }
+  36% {
+    opacity: 1;
+  }
+  58%, 100% {
+    opacity: 0;
+    transform: translateX(360%) skewX(-14deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-light-sweep { animation: none; }
+}
+
+.cinematic-grain {
+  background-image:
+    linear-gradient(0deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: soft-light;
+}
+
 /* Sikkim prayer-flag band — deliberately more present than a hairline, with
    a slow breeze and travelling light so the five colours read as a cultural
    signature rather than ordinary UI status colours. */
@@ -557,13 +588,61 @@ input[type="file"][accept*="application/pdf"].sr-only + div > button:first-child
   transform: translateY(-3px);
 }
 
+.hero-cta-release {
+  animation: hero-cta-release 4s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+.hero-cta-arrow {
+  animation: hero-cta-arrow-release 4s ease-in-out infinite;
+}
+
+@keyframes hero-cta-release {
+  0%, 58%, 100% {
+    filter: brightness(1);
+    transform: translateX(0);
+  }
+  66% {
+    filter: brightness(1.08);
+    transform: translateX(0.35rem) translateY(-1px);
+  }
+  74% {
+    transform: translateX(0.12rem);
+  }
+  82% {
+    filter: brightness(1);
+    transform: translateX(0);
+  }
+}
+
+@keyframes hero-cta-arrow-release {
+  0%, 58%, 100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  66% {
+    opacity: 0;
+    transform: translateX(0.55rem);
+  }
+  67% {
+    opacity: 0;
+    transform: translateX(-0.35rem);
+  }
+  80% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .animate-glow-breathe,
   .animate-rise-fade,
   .animate-fade-out-rise,
   .animate-ambient-drift,
-  .animate-ambient-drift-delayed {
+  .animate-ambient-drift-delayed,
+  .hero-cta-release,
+  .hero-cta-arrow {
     animation: none !important;
   }
 

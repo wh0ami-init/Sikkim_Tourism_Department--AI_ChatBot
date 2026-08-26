@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { ArrowUp, ArrowUpRight, ChevronRight, HeartHandshake, Leaf, LockKeyhole, Mail, Map, MapPin, Menu, MessageSquare, MountainSnow, Phone, Sun, Moon, UserRound, X } from "lucide-react";
+import { ArrowUp, ArrowUpRight, ChevronRight, HeartHandshake, Leaf, LockKeyhole, Mail, Map, MapPin, Menu, MessageSquare, MountainSnow, Phone, ShieldCheck, Sun, Moon, UserRound, X } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 import { GOVT_LOGO_SRC } from "@/config/brand";
 import { getAdminSession } from "@/lib/api";
@@ -70,6 +70,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminName, setAdminName] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [cinematicHeaderVisible, setCinematicHeaderVisible] = useState(true);
+
+  const isHome = location === "/";
+  const isCinematic = location === "/explore";
+  const usesOverlayHeader = isHome || isCinematic;
 
   useEffect(() => {
     const refreshAdminSession = () => {
@@ -113,6 +119,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const onScroll = () => {
       setScrolled(window.scrollY > 30);
       setShowBackToTop(window.scrollY > 420);
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(scrollable > 0 ? Math.min(window.scrollY / scrollable, 1) : 0);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -124,27 +132,52 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setMobileOpen(false);
   }, [location]);
 
-  const isHome = location === "/";
-  const isTransparent = isHome && !scrolled;
+  useEffect(() => {
+    if (!isCinematic) {
+      setCinematicHeaderVisible(true);
+      return;
+    }
+
+    setCinematicHeaderVisible(true);
+    let hideTimer = window.setTimeout(() => setCinematicHeaderVisible(false), 5_200);
+
+    const revealHeader = (event?: MouseEvent | KeyboardEvent | TouchEvent) => {
+      if (event instanceof MouseEvent && event.clientY > 110) return;
+      setCinematicHeaderVisible(true);
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        if (!mobileOpen) setCinematicHeaderVisible(false);
+      }, 4_400);
+    };
+
+    window.addEventListener("mousemove", revealHeader);
+    window.addEventListener("keydown", revealHeader);
+    window.addEventListener("touchstart", revealHeader, { passive: true });
+    return () => {
+      window.clearTimeout(hideTimer);
+      window.removeEventListener("mousemove", revealHeader);
+      window.removeEventListener("keydown", revealHeader);
+      window.removeEventListener("touchstart", revealHeader);
+    };
+  }, [isCinematic, mobileOpen]);
+
+  const isTransparent = usesOverlayHeader && !scrolled;
 
   const headerBg = isTransparent
       ? "bg-[rgba(8,24,20,0.22)] backdrop-blur-xl backdrop-saturate-150 border-white/10"
-      : isHome
+      : usesOverlayHeader
           ? "bg-[rgba(8,24,20,0.55)] backdrop-blur-2xl backdrop-saturate-150 border-white/12 shadow-[0_18px_45px_rgba(5,20,18,0.32)]"
           : "bg-white/55 dark:bg-[rgba(15,25,22,0.55)] backdrop-blur-2xl backdrop-saturate-150 border-white/40 dark:border-white/8 shadow-[0_16px_38px_rgba(15,23,42,0.1)]";
 
-  const txtMain = isHome ? "text-white" : "text-foreground";
-  const txtMuted = isHome ? "text-white/72" : "text-muted-foreground";
-  const linkActive = isHome ? "text-white" : "text-foreground";
-  const linkInactive = isHome
+  const txtMain = usesOverlayHeader ? "text-white" : "text-foreground";
+  const txtMuted = usesOverlayHeader ? "text-white/72" : "text-muted-foreground";
+  const linkActive = usesOverlayHeader ? "text-white" : "text-foreground";
+  const linkInactive = usesOverlayHeader
       ? "text-white/70 hover:text-white"
       : "text-muted-foreground hover:text-foreground";
-  const linkActiveBg = isHome
-      ? "bg-white/14 border-white/18"
-      : "bg-primary/10 border-primary/20 shadow-sm";
-  const linkHoverBg = isHome
-      ? "group-hover:bg-white/8 group-hover:border-white/12"
-      : "group-hover:bg-white/70 dark:group-hover:bg-card/70 group-hover:border-border/80";
+  const linkHoverBg = usesOverlayHeader
+      ? "group-hover:bg-white/9 group-hover:border-white/14"
+      : "group-hover:bg-white/75 dark:group-hover:bg-card/75 group-hover:border-border/80";
 
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
@@ -157,6 +190,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navLinks = [
     { href: "/", label: "Home", icon: MessageSquare },
+    { href: "/explore", label: "Explore", icon: MountainSnow },
     { href: "/destinations", label: "Destinations", icon: Map },
   ];
 
@@ -168,8 +202,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="animate-ambient-drift-delayed absolute right-[-8rem] top-[40rem] h-[20rem] w-[20rem] rounded-full bg-secondary/10 blur-3xl" />
         </div>
 
+        {isCinematic && (
+            <div
+                className="fixed inset-x-0 top-0 z-40 h-10"
+                onMouseEnter={() => setCinematicHeaderVisible(true)}
+                aria-hidden="true"
+            />
+        )}
+
         <header
-            className={`fixed top-0 left-0 right-0 z-50 w-full overflow-hidden border-b transition-all duration-500 ${headerBg}`}
+            className={`fixed top-0 left-0 right-0 z-50 w-full overflow-hidden border-b transition-[transform,opacity,background-color,box-shadow,border-color] duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] ${headerBg} ${
+                isCinematic && !cinematicHeaderVisible && !mobileOpen
+                    ? "pointer-events-none -translate-y-[88%] opacity-0"
+                    : "translate-y-0 opacity-100"
+            }`}
         >
           {/* Glass sheen + soft colour glow — the depth cues that make the
             frosted header read as glass instead of a flat translucent bar. */}
@@ -181,16 +227,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               }}
               aria-hidden="true"
           />
-          <div
-              className="pointer-events-none absolute -top-16 right-[12%] h-32 w-32 rounded-full opacity-25 blur-3xl"
-              style={{ background: "#E9A93B" }}
-              aria-hidden="true"
-          />
-          <div
-              className="pointer-events-none absolute -top-20 left-[28%] h-28 w-28 rounded-full opacity-20 blur-3xl"
-              style={{ background: "#277A6B" }}
-              aria-hidden="true"
-          />
+          <div className="navbar-light-sweep pointer-events-none absolute inset-y-0 left-0 w-1/3" aria-hidden="true" />
           <div
               className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
               style={{
@@ -200,11 +237,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               aria-hidden="true"
           />
 
-          <div className="container relative mx-auto flex h-18 items-center justify-between gap-4 px-4 sm:px-6">
+          <motion.div
+              className="absolute bottom-0 left-0 h-[2px] origin-left bg-gradient-to-r from-amber-300 via-emerald-300 to-cyan-300"
+              style={{ scaleX: scrollProgress }}
+              aria-hidden="true"
+          />
+
+          <div className={`container relative mx-auto flex items-center justify-between gap-4 px-4 transition-[height] duration-300 sm:px-6 ${scrolled ? "h-16" : "h-18"}`}>
             <Link href="/" className="group flex shrink-0 items-center gap-3">
-              <div className="relative h-14 w-14 shrink-0">
+              <div className={`relative shrink-0 transition-[height,width] duration-300 ${scrolled ? "h-12 w-12" : "h-14 w-14"}`}>
                 <span className="absolute inset-0 rounded-full bg-primary/25 blur-[2px] animate-glow-breathe" />
-                <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-white p-1 shadow-lg ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-105">
+                <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white p-1 shadow-lg ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-105">
                   <SikkimLogo className="h-full w-full object-contain" />
                 </div>
               </div>
@@ -222,35 +265,56 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
 
-            <nav className="hidden items-center gap-1.5 rounded-full border border-transparent bg-transparent p-1 md:flex">
+            <nav className={`absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border p-1 shadow-inner transition-all duration-300 md:flex ${
+                  usesOverlayHeader
+                      ? "border-white/12 bg-black/10"
+                      : "border-border/70 bg-white/55 dark:border-white/10 dark:bg-white/5"
+              }`}>
               {navLinks.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
                 return (
                     <Link
                         key={href}
                         href={href}
-                        className={`group relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${active ? linkActive : linkInactive}`}
+                        title={label}
+                        aria-label={label}
+                        className={`focus-ring group relative flex h-10 items-center gap-2 overflow-hidden rounded-full px-3 text-sm font-semibold transition-all duration-200 lg:px-4 ${active ? linkActive : linkInactive}`}
                     >
+                      {active && (
+                          <motion.span
+                              layoutId="desktop-nav-active"
+                              className={`absolute inset-0 rounded-full border ${
+                                  usesOverlayHeader
+                                      ? "border-white/22 bg-white/16 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                                      : "border-primary/25 bg-primary/10 shadow-sm dark:border-white/14 dark:bg-white/8"
+                              }`}
+                              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          />
+                      )}
                   <span
-                      className={`absolute inset-0 rounded-full border transition-all duration-200 ${active ? linkActiveBg : `bg-transparent border-transparent ${linkHoverBg}`}`}
+                      className={`absolute inset-0 rounded-full border border-transparent bg-transparent transition-all duration-200 ${active ? "opacity-0" : linkHoverBg}`}
                   />
-                      <Icon className="relative h-3.5 w-3.5" />
-                      <span className="relative">{label}</span>
+                      <Icon className="relative h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 lg:h-3.5 lg:w-3.5" />
+                      <span className="relative hidden lg:inline">{label}</span>
+                      {active && <span className="relative h-1.5 w-1.5 rounded-full bg-secondary shadow-[0_0_12px_rgba(233,169,59,0.75)]" aria-hidden="true" />}
                     </Link>
                 );
               })}
+              </nav>
 
+            <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
               <Link
                   href="/admin"
                   title={adminName ? `Open the operations console for ${adminName}` : "Administrator sign-in — authorised department staff only. This is not a public registration portal."}
                   aria-label={adminName ? `Open operations console for ${adminName}` : "Administrator sign-in for authorised department staff only"}
-                  className={`group relative ml-1 inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition-all duration-200 ${
-                      isHome
+                  className={`focus-ring group relative inline-flex h-10 items-center gap-2 overflow-hidden rounded-full border px-3 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
+                      usesOverlayHeader
                           ? "border-white/20 bg-white/10 text-white hover:border-white/35 hover:bg-white/16"
                           : "border-primary/20 bg-primary/8 text-primary hover:border-primary/35 hover:bg-primary/12"
                   }`}
               >
-                {adminName ? <><span className="relative flex h-7 w-7 shrink-0 items-center justify-center"><UserRound className="h-5 w-5 origin-bottom transition-transform duration-300 group-hover:-rotate-6 group-hover:translate-y-0.5 group-hover:scale-110" aria-hidden="true" /><span className="absolute -right-2 -top-1 rounded-full bg-secondary px-1 py-px text-[0.45rem] font-extrabold leading-none text-secondary-foreground shadow-sm">Hi</span></span><span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-36 group-hover:opacity-100">Hi, {adminName}</span></> : <><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /><span>Admin sign-in</span><span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${isHome ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>Staff only</span></>}
+                <span className="absolute inset-y-0 -left-8 w-8 -skew-x-12 bg-white/20 opacity-0 transition-all duration-500 group-hover:left-[115%] group-hover:opacity-100" aria-hidden="true" />
+                {adminName ? <><span className="relative flex h-7 w-7 shrink-0 items-center justify-center"><UserRound className="h-5 w-5 origin-bottom transition-transform duration-300 group-hover:-rotate-6 group-hover:translate-y-0.5 group-hover:scale-110" aria-hidden="true" /><span className="absolute -right-2 -top-1 rounded-full bg-secondary px-1 py-px text-[0.45rem] font-extrabold leading-none text-secondary-foreground shadow-sm">Hi</span></span><span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-36 group-hover:opacity-100">Hi, {adminName}</span></> : <><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /><span>Admin sign-in</span><span className={`hidden rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide lg:inline ${usesOverlayHeader ? "bg-white/15 text-white/75" : "bg-primary/10 text-primary/75"}`}>Staff only</span></>}
               </Link>
 
               <button
@@ -267,7 +331,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         : "Switch to dark mode"
                   }
                   className={`group relative ml-1 flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-200 ${
-                      isHome
+                      usesOverlayHeader
                           ? "border-white/10 text-white/75 hover:border-white/20 hover:bg-white/10 hover:text-white"
                           : "border-border/70 bg-white/70 text-muted-foreground hover:border-border hover:bg-white hover:text-foreground dark:bg-card/70 dark:hover:bg-card"
                   }`}
@@ -279,7 +343,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-            </nav>
+            </div>
 
             <div className="flex items-center gap-2 md:hidden">
               <button
@@ -287,7 +351,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   onClick={toggleTheme}
                   aria-label="Toggle theme"
                   className={`flex h-9 w-9 items-center justify-center rounded-full border ${
-                      isHome
+                      usesOverlayHeader
                           ? "border-white/15 text-white/75 hover:bg-white/10"
                           : "border-border/70 bg-white/70 text-muted-foreground hover:bg-white dark:bg-card/70 dark:hover:bg-card"
                   }`}
@@ -303,7 +367,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   onClick={() => setMobileOpen((v) => !v)}
                   aria-label={mobileOpen ? "Close menu" : "Open menu"}
                   className={`flex h-9 w-9 items-center justify-center rounded-full border ${
-                      isHome
+                      usesOverlayHeader
                           ? "border-white/15 text-white/85 hover:bg-white/10"
                           : "border-border/70 bg-white/70 text-foreground hover:bg-white dark:bg-card/70 dark:hover:bg-card"
                   }`}
@@ -334,24 +398,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       aria-label="Close menu"
                       className="fixed inset-0 -z-10 cursor-default bg-black/40 backdrop-blur-sm"
                   />
-                  <nav className="border-t border-white/10 bg-background/70 px-4 py-4 backdrop-blur-2xl backdrop-saturate-150 dark:bg-[rgba(15,25,22,0.75)]">
+                  <nav className="border-t border-white/10 bg-background/82 px-4 py-4 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 dark:bg-[rgba(15,25,22,0.86)]">
+                    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-border/70 bg-white/55 p-3 dark:border-white/10 dark:bg-white/5">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-white/8 dark:text-emerald-200">
+                        <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary dark:text-emerald-200">Official Portal</p>
+                        <p className="mt-0.5 truncate text-sm font-semibold text-foreground">Tourism &amp; Civil Aviation Dept.</p>
+                      </div>
+                    </div>
                     <ul className="flex flex-col gap-1.5">
-                      {navLinks.map(({ href, label, icon: Icon }) => {
+                      {navLinks.map(({ href, label, icon: Icon }, index) => {
                         const active = location === href;
                         return (
-                            <li key={href}>
+                            <motion.li
+                                key={href}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.2, delay: index * 0.04 }}
+                            >
                               <Link
                                   href={href}
-                                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                                  className={`focus-ring relative flex items-center gap-3 overflow-hidden rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
                                       active
-                                          ? "bg-primary/10 text-foreground"
+                                          ? "bg-primary text-primary-foreground shadow-[0_12px_26px_-18px_rgba(8,78,59,0.75)]"
                                           : "text-muted-foreground hover:bg-white/70 hover:text-foreground dark:hover:bg-card/60"
                                   }`}
                               >
+                                {active && <span className="absolute inset-y-2 left-1 w-1 rounded-full bg-secondary" aria-hidden="true" />}
                                 <Icon className="h-4 w-4" />
                                 {label}
+                                <ChevronRight className="ml-auto h-4 w-4 opacity-60" aria-hidden="true" />
                               </Link>
-                            </li>
+                            </motion.li>
                         );
                       })}
                       <li className="mt-1 border-t border-border/70 pt-2">
@@ -372,13 +452,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </header>
 
+        {isCinematic && (
+            <button
+                type="button"
+                onClick={() => setCinematicHeaderVisible(true)}
+                aria-label="Show navigation"
+                className={`fixed left-1/2 top-2 z-40 h-1.5 w-24 -translate-x-1/2 rounded-full bg-white/50 shadow-[0_0_24px_rgba(255,255,255,0.28)] backdrop-blur-sm transition-all duration-700 hover:w-32 hover:bg-white/75 ${
+                    cinematicHeaderVisible || mobileOpen ? "pointer-events-none -translate-y-4 opacity-0" : "translate-y-0 opacity-100"
+                }`}
+            />
+        )}
+
         <main
-            className={`relative flex flex-1 flex-col ${isHome ? "" : "pt-18"}`}
+            className={`relative flex flex-1 flex-col ${usesOverlayHeader ? "" : "pt-18"}`}
         >
           {children}
         </main>
 
-        <footer className="relative overflow-hidden bg-[#edf5f1] text-[#123f36] dark:bg-[#0b342d] dark:text-white">
+        {!isCinematic && <footer className="relative overflow-hidden bg-[#edf5f1] text-[#123f36] dark:bg-[#0b342d] dark:text-white">
           <div aria-hidden="true" className="h-1.5 bg-gradient-to-r from-amber-400 via-emerald-300 to-teal-400" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(233,169,59,0.14),transparent_27%),radial-gradient(circle_at_8%_82%,rgba(58,169,144,0.15),transparent_28%)] dark:bg-[radial-gradient(circle_at_85%_15%,rgba(233,169,59,0.18),transparent_27%),radial-gradient(circle_at_8%_82%,rgba(58,169,144,0.2),transparent_28%)]" />
           <div className="relative container mx-auto px-4 py-10 sm:px-6 lg:py-12">
@@ -405,11 +496,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, amount: 0.12 }} transition={{ duration: 0.65, delay: 0.45 }} className="flex flex-col-reverse gap-5 border-t border-[#123f36]/15 pt-6 text-xs text-[#315d53]/65 sm:flex-row sm:items-center sm:justify-between dark:border-white/15 dark:text-white/55"><p>© {new Date().getFullYear()} Tourism &amp; Civil Aviation Department, Government of Sikkim. All rights reserved.</p><div className="flex items-center gap-3"><img src="/images/digital-india.png" alt="Digital India" className="h-8 w-auto object-contain opacity-85 transition-transform duration-300 hover:scale-105" /><img src="/images/statehood.png" alt="Sikkim Statehood" className="h-8 w-auto object-contain opacity-85 transition-transform duration-300 hover:scale-105" /><img src="/images/sikkim-inspires.png" alt="Sikkim Inspires" className="h-8 w-auto object-contain opacity-85 transition-transform duration-300 hover:scale-105" /></div></motion.div>
           </div>
-        </footer>
+        </footer>}
 
-        <ChatWidget />
+        {!isCinematic && <ChatWidget />}
         <AnimatePresence>
-          {showBackToTop && (
+          {showBackToTop && !isCinematic && (
             <motion.button
               type="button"
               initial={{ opacity: 0, scale: 0.82, y: 10 }}

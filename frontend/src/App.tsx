@@ -12,6 +12,7 @@ import { Layout } from "@/components/layout";
 // the visitor requested instead of downloading every view.
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Home = lazy(() => import("@/pages/home"));
+const Explore = lazy(() => import("@/pages/explore"));
 const Destinations = lazy(() => import("@/pages/destinations"));
 const Admin = lazy(() => import("@/pages/admin"));
 const AdminSecurity = lazy(() => import("@/pages/admin-security"));
@@ -23,6 +24,7 @@ function App() {
         <Suspense fallback={<main className="min-h-screen" aria-busy="true" />}>
           <Switch>
             <Route path="/" component={Home} />
+            <Route path="/explore" component={Explore} />
             <Route path="/destinations" component={Destinations} />
             <Route path="/admin" component={Admin} />
             <Route path="/admin/security" component={AdminSecurity} />
