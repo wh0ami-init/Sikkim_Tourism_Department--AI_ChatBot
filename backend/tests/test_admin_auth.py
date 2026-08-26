@@ -45,6 +45,18 @@ def test_admin_session_expires_server_side(monkeypatch):
     assert admin_session.read_admin_session(token) is None
 
 
+@pytest.mark.asyncio
+async def test_admin_session_requires_existing_account(repository):
+    token = admin_session.issue_admin_session("missing.admin")
+
+    with pytest.raises(HTTPException, match="Invalid admin credentials"):
+        await dependencies.verify_admin_credentials(
+            authorization=None,
+            admin_session=token,
+            repo=repository,
+        )
+
+
 def test_dashboard_uses_the_repository_agency_count(client, admin_headers, repository, monkeypatch):
     async def count_travel_agencies(district=None):
         assert district is None

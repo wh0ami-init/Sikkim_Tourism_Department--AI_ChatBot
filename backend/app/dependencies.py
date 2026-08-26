@@ -67,7 +67,9 @@ async def verify_admin_credentials(
     """Authorize admin requests with a signed session or legacy Basic credentials."""
     session_username = read_admin_session(admin_session)
     if session_username:
-        return session_username
+        user = await repo.get_admin_user(session_username)
+        if user is not None:
+            return user.username
     if not authorization or not authorization.startswith("Basic "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
