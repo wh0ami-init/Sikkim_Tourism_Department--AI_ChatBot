@@ -225,6 +225,14 @@ _RESTRICTED_ACCESS_TERMS = (
     "foreign tourist", "foreign tourists", "foreign national", "foreign nationals",
     "foreign visitor", "foreign visitors", "restricted area",
 )
+_CONTEXTUAL_REFERENCE_TERMS = (
+    "it", "that", "this", "there", "that place", "this place", "same place",
+    "that destination", "this destination",
+)
+_LIVE_DATA_RETRY_TERMS = (
+    "online", "live data", "official website", "track from", "search from",
+    "check from", "use official", "latest data",
+)
 _DESTINATION_LIST_TERMS = (
     "destination", "destinations", "place", "places", "attraction", "attractions",
     "visit", "see", "sightseeing",
@@ -233,6 +241,35 @@ _DESTINATION_DETAIL_TERMS = (
     "about", "detail", "details", "information", "info", "where", "location",
     "reach", "how to reach", "best time", "highlights", "things to do",
     "altitude", "category",
+)
+_DESTINATION_RECORD_PHRASES = (
+    "tell me about",
+    "about",
+    "detail",
+    "details",
+    "information",
+    "info",
+    "where is",
+    "where's",
+    "location",
+    "located",
+    "reach",
+    "how to reach",
+    "best time",
+    "entry fee",
+    "permit",
+    "altitude",
+    "highlight",
+    "things to do",
+    "visit",
+    "see",
+    "sightseeing",
+    "attraction",
+    "attractions",
+    "destination",
+    "destinations",
+    "place",
+    "places",
 )
 _PERMIT_OVERVIEW_TERMS = (
     "how many", "types", "type", "kinds", "kind", "which permits",
@@ -265,6 +302,47 @@ def _needs_full_destination_context(message: str) -> bool:
     return any(phrase in " ".join(message.lower().split()) for phrase in _FULL_CATALOG_PHRASES)
 
 
+def _looks_like_circular_followup(message: str) -> bool:
+    """True for short follow-ups that depend on a previous circular/road turn."""
+    text = " ".join(message.lower().split())
+    if not text:
+        return False
+
+    if any(phrase in text for phrase in _LATEST_UPDATE_PHRASES):
+        return True
+
+    if _extract_district(message) and (
+        len(text.split()) <= 6
+        or any(word in text for word in ("road", "route", "status", "open", "closed", "blocked"))
+    ):
+        return True
+
+    if re.search(
+        r"\b(?:of|on|for|the)\s+(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?\b|"
+        r"\b(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)\b",
+        text,
+    ):
+        return True
+
+    if re.search(r"\b20\d{2}-\d{2}-\d{2}\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b", text):
+        return True
+
+    followup_markers = (
+        "what about",
+        "and ",
+        "also ",
+        "same",
+        "that",
+        "this",
+        "it",
+        "full detail",
+        "full details",
+        "more detail",
+        "more details",
+    )
+    return len(text.split()) <= 8 and any(marker in text for marker in followup_markers)
+
+
 def _needs_latest_circulars(message: str, history: list[dict] | None = None) -> bool:
     """
     True if the current message matches a road-status/circular keyword,
@@ -274,8 +352,12 @@ def _needs_latest_circulars(message: str, history: list[dict] | None = None) -> 
     model's general knowledge (which was inventing fake dates/roads).
     """
     text = " ".join(message.lower().split())
+    if _needs_current_event_verification(message) or _needs_festival_information(message):
+        return False
     if any(phrase in text for phrase in _LATEST_UPDATE_PHRASES):
         return True
+    if not _looks_like_circular_followup(message):
+        return False
     if history:
         for m in history[-4:]:
             recent = " ".join(m.get("content", "").lower().split())
@@ -322,11 +404,102 @@ def _official_event_search_query(message: str) -> str:
 
 
 def _needs_emergency_response(message: str) -> bool:
-    return any(term in message.casefold() for term in _EMERGENCY_TERMS)
+    text = message.casefold()
+    urgent_terms = tuple(term for term in _EMERGENCY_TERMS if term != "emergency")
+    if any(term in text for term in urgent_terms):
+        return True
+    return "emergency" in text and any(
+        phrase in text
+        for phrase in (
+            "send help",
+            "need help now",
+            "immediate help",
+            "immediate danger",
+            "urgent help",
+            "stuck",
+        )
+    )
 
 
 def _needs_medical_response(message: str) -> bool:
     return any(term in message.casefold() for term in _MEDICAL_TERMS)
+
+
+def _needs_contact_directory_guidance(message: str) -> bool:
+    text = message.casefold()
+    return any(
+        phrase in text
+        for phrase in (
+            "emergency contact",
+            "tourism contact",
+            "contact information",
+            "contact details",
+            "helpline",
+            "phone number",
+        )
+    ) and any(word in text for word in ("where", "find", "official", "travelling", "traveling", "while"))
+
+
+def _format_contact_directory_guidance() -> str:
+    return (
+        "For official contact information while travelling in Sikkim, use the "
+        "Tourism and Civil Aviation Department website and the official notices page:\n\n"
+        "- https://sikkimtourism.gov.in\n"
+        "- https://sikkimtourism.gov.in/updates/notice\n\n"
+        "For an urgent situation, contact the nearest police, medical, road, or local authority directly. "
+        "I do not have a verified current phone directory in this chat, so I will not list phone numbers."
+    )
+
+
+def _needs_transaction_response(message: str) -> bool:
+    text = message.casefold()
+    return any(
+        phrase in text
+        for phrase in (
+            "book a hotel",
+            "book hotel",
+            "make a booking",
+            "reserve",
+            "reservation",
+            "pay for",
+            "make payment",
+            "process payment",
+            "buy ticket",
+        )
+    )
+
+
+def _format_transaction_response() -> str:
+    return (
+        "I cannot make bookings, reservations, payments, or purchases. "
+        "I can help you understand what to verify before booking, such as location, access, permits, "
+        "cancellation terms, and whether the provider is properly registered."
+    )
+
+
+def _needs_off_topic_response(message: str) -> bool:
+    text = message.casefold()
+    if any(word in text for word in ("sikkim", "tourism", "travel", "trip", "permit", "destination")):
+        return False
+    return any(
+        phrase in text
+        for phrase in (
+            "write python",
+            "python code",
+            "write code",
+            "scrape a website",
+            "coding",
+            "programming",
+        )
+    )
+
+
+def _format_off_topic_response() -> str:
+    return (
+        "I am the Sikkim Tourism Assistant and can only help with questions about "
+        "Sikkim and visitor travel. Ask me about destinations, permits, routes, notices, "
+        "culture, food, safety, or trip planning in Sikkim."
+    )
 
 
 def _needs_agency_recommendation(message: str) -> bool:
@@ -342,6 +515,82 @@ def _needs_exact_official_fact(message: str) -> bool:
     return any(term in text for term in _OFFICIAL_FACT_TERMS) or any(
         term in text for term in _RESTRICTED_ACCESS_TERMS
     )
+
+
+def _has_contextual_reference(message: str) -> bool:
+    text = " ".join(message.casefold().split())
+    tokens = set(re.findall(r"[a-z]+", text))
+    return any(
+        (" " in term and term in text) or (" " not in term and term in tokens)
+        for term in _CONTEXTUAL_REFERENCE_TERMS
+    )
+
+
+def _looks_like_official_fact_retry(message: str, history: list[dict] | None = None) -> bool:
+    """True when the visitor asks to use live/official data for the prior fact question."""
+    text = " ".join(message.casefold().split())
+    if not any(term in text for term in _LIVE_DATA_RETRY_TERMS):
+        return False
+    return any(
+        m.get("role") == "user" and _needs_exact_official_fact(m.get("content", ""))
+        for m in (history or [])[-4:]
+    )
+
+
+async def _resolve_contextual_official_fact_message(
+    repo: BaseRepository,
+    message: str,
+    history: list[dict] | None = None,
+) -> str | None:
+    """
+    Resolve permit/fee follow-ups like "do we need a permit for it?" to the
+    latest destination the visitor was discussing. Returns None when this turn
+    is not an official fact question/retry.
+    """
+    is_fact_question = _needs_exact_official_fact(message)
+    is_retry = _looks_like_official_fact_retry(message, history)
+    if not is_fact_question and not is_retry:
+        return None
+
+    try:
+        destinations = await repo.list_destinations()
+    except Exception:
+        destinations = []
+
+    if destinations and _find_named_destinations(message, destinations):
+        return message
+
+    if not destinations or (is_fact_question and not _has_contextual_reference(message) and not is_retry):
+        return message
+
+    prior_fact_question = ""
+    for item in reversed(history or []):
+        if item.get("role") == "user" and _needs_exact_official_fact(item.get("content", "")):
+            prior_fact_question = item.get("content", "")
+            break
+
+    destination = None
+    for role in ("user", "assistant"):
+        for item in reversed(history or []):
+            if item.get("role") != role:
+                continue
+            matches = _find_named_destinations(item.get("content", ""), destinations)
+            if matches:
+                destination = matches[0]
+                break
+        if destination:
+            break
+
+    if not destination:
+        return message if is_fact_question else None
+
+    fact_text = prior_fact_question if is_retry and prior_fact_question else message
+    lowered = fact_text.casefold()
+    if "entry fee" in lowered or "ticket price" in lowered or "fee" in lowered:
+        return f"What is the entry fee for {destination.name}?"
+    if "foreign" in lowered or "restricted area" in lowered:
+        return f"What restricted area permit rules apply for {destination.name}?"
+    return f"Do I need a permit for {destination.name}?"
 
 
 async def _needs_permit_overview_response(repo: BaseRepository, message: str) -> bool:
@@ -382,10 +631,39 @@ def _format_permit_overview_response() -> str:
 def _needs_destination_list_response(message: str) -> bool:
     """True when the user asks for an official catalogue list, not narrative advice."""
     text = " ".join(message.casefold().split())
+    if any(
+        phrase in text
+        for phrase in (
+            "same day",
+            "one day",
+            "2 day",
+            "two day",
+            "3 day",
+            "three day",
+            "itinerary",
+            "plan",
+        )
+    ):
+        return False
     return _needs_full_destination_context(message) or (
         _extract_district(message) is not None
         and any(term in text for term in _DESTINATION_LIST_TERMS)
     )
+
+
+def _needs_named_destination_record_response(message: str) -> bool:
+    """True when a named place should be rendered as an exact catalogue record."""
+    text = " ".join(message.casefold().split())
+    if "same day" in text:
+        return False
+    if " from " in f" {text} " and any(
+        term in text
+        for term in ("reach", "route", "travel", "travelling", "traveling", "arrive", "arriving", "airport")
+    ):
+        return False
+    if len(text.split()) <= 4:
+        return True
+    return any(phrase in text for phrase in _DESTINATION_RECORD_PHRASES)
 
 
 def _format_destination_record(destination) -> list[str]:
@@ -462,9 +740,15 @@ async def _format_destination_catalog_response(repo: BaseRepository, message: st
     district = _extract_district(message)
     text = " ".join(message.casefold().split())
     wants_list = _needs_destination_list_response(message)
-    named = [] if wants_list else _find_named_destinations(message, destinations)
+    named = (
+        []
+        if wants_list or not _needs_named_destination_record_response(message)
+        else _find_named_destinations(message, destinations)
+    )
 
     if named:
+        if len(named) > 1:
+            return None
         lines = []
         for index, destination in enumerate(named):
             if index:
@@ -523,6 +807,8 @@ async def _format_destination_catalog_response(repo: BaseRepository, message: st
     if any(term in text for term in _DESTINATION_DETAIL_TERMS) and any(
         term in text for term in ("destination", "place", "attraction", "monastery", "lake", "valley", "park")
     ):
+        if not any(term in text for term in ("official", "catalogue", "catalog", "department record")):
+            return None
         return (
             "I could not match that place to an official destination record in the Department catalogue. "
             "Please check the spelling or ask using the destination name listed in the catalogue."
@@ -976,10 +1262,20 @@ async def _format_circular_inventory(repo: BaseRepository, message: str) -> str:
     return "\n".join(lines)
 
 
-async def _format_latest_circulars_response(repo: BaseRepository, message: str) -> str:
+async def _format_latest_circulars_response(
+        repo: BaseRepository,
+        message: str,
+        history: list[dict] | None = None,
+) -> str:
     """Return latest dated official notices without asking the LLM to infer status."""
     text = " ".join(message.casefold().split())
     category = "road_status" if any(word in text for word in ("road", "nathula", "nathu la", "north sikkim")) else None
+    if category is None and history and _looks_like_circular_followup(message):
+        for m in history[-4:]:
+            recent = " ".join(m.get("content", "").casefold().split())
+            if any(word in recent for word in ("road status", "road-status", "road condition", "road closure")):
+                category = "road_status"
+                break
     requested_district = _extract_district(message)
     requested_day_match = re.search(r"\b([0-3]?\d)(?:st|nd|rd|th)?\b", text)
     try:
@@ -1600,8 +1896,26 @@ async def send_message(
             # phone numbers and addresses are database facts, not language-model
             # facts.
             if not has_image:
+                if _needs_contact_directory_guidance(body.message):
+                    deterministic = _format_contact_directory_guidance()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
                 if _needs_emergency_response(body.message):
                     deterministic = _format_emergency_response()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_transaction_response(body.message):
+                    deterministic = _format_transaction_response()
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_off_topic_response(body.message):
+                    deterministic = _format_off_topic_response()
                     assistant_chunks.append(deterministic)
                     yield f"data: {json.dumps({'text': deterministic})}\n\n"
                     return
@@ -1630,12 +1944,18 @@ async def send_message(
                     yield f"data: {json.dumps({'text': deterministic})}\n\n"
                     return
 
-                if _needs_exact_official_fact(body.message):
-                    deterministic = await _format_exact_official_fact(repo, body.message)
+                official_fact_message = await _resolve_contextual_official_fact_message(
+                    repo, body.message, history
+                )
+                if official_fact_message:
+                    deterministic = await _format_exact_official_fact(repo, official_fact_message)
                     if deterministic.startswith("I do not have a verified Department destination record"):
-                        official_web_context = await search_official_sikkim_tourism(body.message)
+                        official_web_context = await search_official_sikkim_tourism(official_fact_message)
                         if official_web_context:
-                            deterministic = _format_official_web_fallback(official_web_context, body.message)
+                            deterministic = _format_official_web_fallback(
+                                official_web_context,
+                                official_fact_message,
+                            )
                             assistant_chunks.append(deterministic)
                             yield f"data: {json.dumps({'text': deterministic})}\n\n"
                             return
@@ -1701,22 +2021,6 @@ async def send_message(
                             agency_exc,
                         )
 
-                # Inventory questions are also answered directly from MySQL.
-                # Full circular OCR can be lengthy and is unnecessary when a
-                # visitor asks for a count or a list of notices; returning a
-                # bounded, dated inventory keeps the reply accurate and fast.
-                if _needs_circular_inventory(body.message):
-                    deterministic = await _format_circular_inventory(repo, body.message)
-                    assistant_chunks.append(deterministic)
-                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
-                    return
-
-                if _needs_latest_circulars(body.message, history):
-                    deterministic = await _format_latest_circulars_response(repo, body.message)
-                    assistant_chunks.append(deterministic)
-                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
-                    return
-
                 # Events are time-sensitive public information. Until the
                 # application has a verified event-record feed, query only the
                 # Department website before answering. Never let a language
@@ -1747,6 +2051,22 @@ async def send_message(
                         assistant_chunks.append(deterministic)
                         yield f"data: {json.dumps({'text': deterministic})}\n\n"
                         return
+
+                # Inventory questions are also answered directly from MySQL.
+                # Full circular OCR can be lengthy and is unnecessary when a
+                # visitor asks for a count or a list of notices; returning a
+                # bounded, dated inventory keeps the reply accurate and fast.
+                if _needs_circular_inventory(body.message):
+                    deterministic = await _format_circular_inventory(repo, body.message)
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
+
+                if _needs_latest_circulars(body.message, history):
+                    deterministic = await _format_latest_circulars_response(repo, body.message, history)
+                    assistant_chunks.append(deterministic)
+                    yield f"data: {json.dumps({'text': deterministic})}\n\n"
+                    return
 
             if has_image:
                 # Vision path — Gemini multimodal
