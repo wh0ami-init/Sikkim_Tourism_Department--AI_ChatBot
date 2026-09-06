@@ -5,6 +5,7 @@ Import `get_repo` wherever you need data access. The rest of the app never
 imports MySQLRepository directly, so swapping in a different backend later
 is still a one-file change.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache

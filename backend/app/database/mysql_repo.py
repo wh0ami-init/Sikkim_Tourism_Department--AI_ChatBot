@@ -1,11 +1,6 @@
 """
 MySQLRepository — the department's real MySQL database backend.
 
-HOW TO ACTIVATE:
-  1. Fill in MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
-     in your .env file (or your deployment platform's env vars).
-  2. Run the SQL schema in docs/schema.sql against the department's database.
-
 Full working implementation matching docs/schema.sql exactly.
 """
 from __future__ import annotations
@@ -33,21 +28,6 @@ from app.models.schemas import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Common English words that would otherwise pass search_travel_agencies()'s
-# `len(t) > 2` token filter and match almost every row in the table (e.g.
-# "the"), starving out the unordered candidate-pool limit before
-# a genuinely matching agency is ever scored. See search_travel_agencies()
-# for the full explanation.
-#
-# This list is deliberately broad: it covers not just articles/prepositions
-# but the generic question/request words a tourist naturally uses when
-# asking about an agency ("do you have contact details for ..."). Without
-# these, a normal phrasing like "what is the contact info for M/s
-# Enchanting Sikkim Tours & Travels" burns through the token cap on
-# "what"/"contact"/"info" before ever reaching "enchanting" — the agency's
-# actual name never makes it into the SQL WHERE clause, so the row is
-# never even fetched into the candidate pool, let alone scored.
 
 def _row_to_circular(row: dict) -> Circular:
     issue_date = row["issue_date"]

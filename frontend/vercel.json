@@ -15,7 +15,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://sikkimtourismdepartment-aichatbot-production.up.railway.app/api/:path*"
+      "destination": "https://sikkimtourismdepartment-aichatbot-backend-404.up.railway.app/api/:path*"
     },
     {
       "source": "/(.*)",

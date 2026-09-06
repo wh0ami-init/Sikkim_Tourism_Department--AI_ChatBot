@@ -55,9 +55,8 @@ class Destination(BaseModel):
     highlights: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     image_placeholder: str = ""
-    # Relative URL (e.g. /images/Gangtok.png) or colour hex used as CSS
-    # background fallback when no image is available.
     image_url: str | None = None
+
     # Geographic coordinates — used by the frontend to fetch live weather
     # from Open-Meteo (free, no API key required).
     latitude: float | None = None
@@ -123,9 +122,7 @@ class DestinationSummary(BaseModel):
     tags: list[str]
     image_placeholder: str
     image_url: str | None = None
-    # Truncated to 160 chars by the router for list views
     description: str
-    # Geographic coordinates forwarded from the full Destination record
     latitude: float | None = None
     longitude: float | None = None
 
@@ -141,21 +138,15 @@ class Circular(BaseModel):
     never written directly by user-facing requests.
     """
 
-    # None until save_circular() persists it and assigns the real primary key
-    # (auto-increment in MySQL).
     id: int | None = None
     title: str
     category: Literal["road_status", "cancellation_order", "tender"]
     district: str | None = None
-    issue_date: str  # ISO date string (YYYY-MM-DD) — kept as str to avoid
-    # timezone edge cases when round-tripping through JSON/MySQL DATE columns.
+    issue_date: str
     source_url: str
-    pdf_hash: str  # sha256 of the PDF bytes — used to skip already-ingested files
+    pdf_hash: str
     extracted_text: str
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    # Uploaded road-status files are retained so visitors can preview or
-    # download the original document. Excluding the payload keeps it out of
-    # every JSON list response and chat context.
     stored_file: bytes | None = Field(default=None, exclude=True)
     file_mime_type: str | None = None
     file_name: str | None = None
@@ -213,8 +204,6 @@ class TravelAgency(BaseModel):
     sometimes spelled "conatct" in the source, a few rows are placeholders).
     """
 
-    # None until save_travel_agency() persists it and assigns the real
-    # primary key (auto-increment in MySQL).
     id: int | None = None
     name: str
     registration_number: str
@@ -235,7 +224,6 @@ class Conversation(BaseModel):
     """A chat session container.  Created by POST /api/conversations/."""
 
     id: str = Field(default_factory=lambda: str(uuid4()))
-    # Use timezone-aware UTC — datetime.utcnow() is deprecated in Python 3.12+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -251,11 +239,7 @@ class Message(BaseModel):
 
 
 # ── Request / Response bodies ──────────────────────────────────────────────────
-
-# Allowed MIME types for image uploads — whitelist only.
 _ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
-
-# Max base64 length accepted (~4 MB binary → ~5.5 MB base64).
 _MAX_IMAGE_BASE64_LEN = 5_600_000
 
 
@@ -271,9 +255,6 @@ class ChatRequest(BaseModel):
     client_message_id: str | None = Field(default=None, max_length=64)
 
     # ── Optional image attachment ──────────────────────────────────────────
-    # Raw base64-encoded image bytes (no data-URI prefix — strip it on the
-    # frontend before sending to keep the payload clean and avoid surprises
-    # when the backend validates length).
     image_base64: str | None = Field(default=None, max_length=_MAX_IMAGE_BASE64_LEN)
     image_mime_type: str | None = Field(default=None)
 
@@ -290,12 +271,8 @@ class ChatRequest(BaseModel):
         bypassing the empty-message guard.
         """
         if not isinstance(v, str):
-            return v  # let Pydantic's normal type validation raise the error
-
-        # Strip leading/trailing whitespace
+            return v
         v = v.strip()
-
-        # Normalize Unicode (NFKC) to prevent homograph attacks
         v = unicodedata.normalize("NFKC", v)
 
         return v
@@ -344,14 +321,9 @@ class ChatRequest(BaseModel):
         except (ValueError, TypeError):
             raise ValueError("image_base64 must be valid base64 data.") from None
 
-        # Keep the server-side limit aligned with the 4 MB client-side limit.
         if len(decoded) > 4 * 1024 * 1024:
             raise ValueError("Image must be 4 MB or smaller.")
 
-        # MIME types are user-controlled. Confirm the file signature before the
-        # bytes are forwarded to the vision provider, and deliberately exclude
-        # animated formats whose decoded size can be disproportionate to their
-        # upload size.
         valid_signature = {
             "image/jpeg": decoded.startswith(b"\xff\xd8\xff"),
             "image/png": decoded.startswith(b"\x89PNG\r\n\x1a\n"),
