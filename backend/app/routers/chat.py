@@ -49,14 +49,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Keep model prompts bounded as a conversation grows.  Full history was sent
-# on every request, eventually causing slow responses, provider token-limit
-# failures, and unnecessary cost.  The complete conversation remains stored
-# in the repository; this only limits what is placed in a single prompt.
 MAX_HISTORY_MESSAGES = 16
 
-# Only broad catalogue questions need every destination in the prompt. Sending
-# it on narrow questions wastes tokens and noticeably delays the first answer.
 _FULL_CATALOG_PHRASES = (
     "list all",
     "all destinations",
@@ -70,10 +64,6 @@ _FULL_CATALOG_PHRASES = (
     "sightseeing",
 )
 
-# Questions matching these phrases get the freshest circulars injected
-# directly — same reasoning as _FULL_CATALOG_PHRASES above: this is
-# important enough that we don't want to gamble on vector similarity
-# happening to surface it.
 _LATEST_UPDATE_PHRASES = (
     "latest update",
     "latest news",

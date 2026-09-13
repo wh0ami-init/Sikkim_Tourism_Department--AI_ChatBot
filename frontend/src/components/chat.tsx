@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -762,12 +762,67 @@ function Bubble({
 
    Both render identically: same palette, same spacing, same bubble rules.
    ─────────────────────────────────────────────────────────────────────── */
-export function Chat({ compact = false, wide = false }: { compact?: boolean; wide?: boolean }) {
+/* Chat identity survives the widget unmounting on close: chat-widget.tsx
+   only renders <Chat /> while the panel is open, so every close/reopen was
+   otherwise a fresh mount with blank state, and the visitor's history —
+   still sitting in the DB under the old conversation id — looked "gone".
+   sessionStorage keeps it for the life of the tab (cleared on actual tab
+   close, which is the right privacy boundary here) so a reopen can resume
+   the same conversation instead of silently starting a new one. */
+const CONVERSATION_ID_STORAGE_KEY = "sikkim-chat:conversation-id";
+const CONVERSATION_TOKEN_STORAGE_KEY = "sikkim-chat:conversation-token";
+
+function readStoredConversation(): {
+  id: string | null;
+  accessToken: string | null;
+} {
+  if (typeof window === "undefined") return { id: null, accessToken: null };
+  try {
+    return {
+      id: window.sessionStorage.getItem(CONVERSATION_ID_STORAGE_KEY),
+      accessToken: window.sessionStorage.getItem(
+        CONVERSATION_TOKEN_STORAGE_KEY,
+      ),
+    };
+  } catch {
+    // Storage can throw in locked-down/private-browsing contexts — treat
+    // that the same as "nothing stored" rather than breaking the widget.
+    return { id: null, accessToken: null };
+  }
+}
+
+function writeStoredConversation(id: string | null, accessToken: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (id && accessToken) {
+      window.sessionStorage.setItem(CONVERSATION_ID_STORAGE_KEY, id);
+      window.sessionStorage.setItem(CONVERSATION_TOKEN_STORAGE_KEY, accessToken);
+    } else {
+      window.sessionStorage.removeItem(CONVERSATION_ID_STORAGE_KEY);
+      window.sessionStorage.removeItem(CONVERSATION_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    /* best-effort only */
+  }
+}
+
+export interface ChatHandle {
+  /** Wipe the visible thread and local session, then let the existing
+   * eager-create effect spin up a brand-new conversation automatically. */
+  startNewConversation: () => void;
+}
+
+export const Chat = forwardRef<
+  ChatHandle,
+  { compact?: boolean; wide?: boolean }
+>(function Chat({ compact = false, wide = false }, ref) {
   const theme = useChatTheme();
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(
+    () => readStoredConversation().id,
+  );
   const [conversationAccessToken, setConversationAccessToken] = useState<
     string | null
-  >(null);
+  >(() => readStoredConversation().accessToken);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -815,6 +870,84 @@ export function Chat({ compact = false, wide = false }: { compact?: boolean; wid
       recognitionRef.current?.stop();
     };
   }, []);
+
+  /* Eagerly create the conversation as soon as the widget mounts, so the
+     visitor's first message doesn't also have to wait on this round-trip.
+     `handleSend` still has its own lazy-create fallback further down for
+     the rare race (fast typer sends before this resolves) or if this
+     call fails — nothing else changes if that happens. Skipped entirely
+     when a conversation was just restored from sessionStorage below. */
+  useEffect(() => {
+    if (conversationId || conversationAccessToken) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await createConversation();
+        if (cancelled) return;
+        setConversationId(res.conversation.id);
+        setConversationAccessToken(res.accessToken);
+        writeStoredConversation(res.conversation.id, res.accessToken);
+      } catch (e) {
+        // No user-facing error here — the widget is just idle at this
+        // point, and handleSend will retry once they actually send.
+        console.error("Failed to eagerly create conversation", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, conversationAccessToken]);
+
+  /* Resume a conversation restored from sessionStorage (widget was closed
+     and reopened, or the page was refreshed) by pulling its message history
+     back in. Runs once per mount — `hasRestoredRef` stops it from re-firing
+     if `conversationId`/`messages` change for other reasons later. */
+  const hasRestoredRef = useRef(false);
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    if (!conversationId || !conversationAccessToken) return;
+    if (messages.length > 0) return;
+    hasRestoredRef.current = true;
+
+    (async () => {
+      try {
+        const res = await fetchConversation(conversationId, conversationAccessToken);
+        setMessages(res.messages);
+      } catch (e) {
+        // The stored conversation is gone or the token's stale (e.g. server
+        // restarted, TTL cleanup). Drop it and fall back to a fresh one —
+        // same effect as if nothing had been stored to begin with.
+        console.error("Failed to resume stored conversation", e);
+        writeStoredConversation(null, null);
+        setConversationId(null);
+        setConversationAccessToken(null);
+      }
+    })();
+  }, [conversationId, conversationAccessToken, messages.length]);
+
+  /* Explicit reset, triggered from the widget header's "New chat" button.
+     Clearing conversationId/accessToken re-arms the eager-create effect
+     above (its guard is "if either is set, do nothing"), so a fresh
+     conversation is created automatically right after this runs — no
+     duplicate creation logic needed here. */
+  const startNewConversation = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setMessages([]);
+    setConversationId(null);
+    setConversationAccessToken(null);
+    writeStoredConversation(null, null);
+    setChatError(null);
+    setFailedTurn(null);
+    setInput("");
+    setPendingImage(null);
+    setImageError(null);
+  }, []);
+
+  useImperativeHandle(ref, () => ({ startNewConversation }), [
+    startNewConversation,
+  ]);
 
   /* Grow the textarea with content, capped so it never eats the thread. */
   const resizeInput = useCallback(() => {
@@ -990,6 +1123,7 @@ export function Chat({ compact = false, wide = false }: { compact?: boolean; wid
 
         setConversationId(res.conversation.id);
         setConversationAccessToken(res.accessToken);
+        writeStoredConversation(res.conversation.id, res.accessToken);
 
         currentConvId = res.conversation.id;
         currentAccessToken = res.accessToken;
@@ -1591,4 +1725,4 @@ export function Chat({ compact = false, wide = false }: { compact?: boolean; wid
       </div>
     </div>
   );
-}
+});

@@ -27,6 +27,8 @@ from app.dependencies import _DUMMY_PASSWORD_HASH, verify_admin_credentials, ver
 from app.limiting import limiter
 from app.routers import chat, destinations
 from app.startup import resync_vectorstore, populate_vectorstore
+from app.services.rag_chain import _get_llm
+from langchain_core.messages import HumanMessage
 from app.models.schemas import AdminCredentials, AdminCredentialsChange, AdminUser, Destination, DestinationWrite
 from app.services.admin_auth import hash_password, validate_password, verify_password
 from app.services.admin_session import SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS, issue_admin_session
@@ -129,6 +131,23 @@ async def lifespan(app: FastAPI):
             "The chat service will start without a populated vectorstore. "
             "This may lead to degraded performance or missing information."
         )
+
+    # Warm the Groq LLM clients (and their first TLS handshake) now, so the
+    # first real visitor question doesn't pay for it. Non-fatal: if Groq is
+    # briefly unreachable at boot, the app still starts and pays the cold
+    # cost lazily on the first request instead, exactly as before this fix.
+    if settings.groq_api_key:
+        for model_name in {settings.groq_model, settings.prompt_guard_model}:
+            try:
+                warm_llm = _get_llm(model_name, streaming=False)
+                await warm_llm.ainvoke([HumanMessage(content="ping")])
+                logger.info("Startup: warmed Groq client for '%s'.", model_name)
+            except Exception as exc:
+                logger.warning(
+                    "Startup: failed to warm Groq client for '%s' (non-fatal): %s",
+                    model_name,
+                    exc,
+                )
 
     # Start the optional circular-ingestion scheduler.
     scheduler = None

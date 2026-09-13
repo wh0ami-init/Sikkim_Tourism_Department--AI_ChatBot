@@ -1,11 +1,12 @@
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Maximize2, Minimize2, MessageCircle } from "lucide-react";
+import { X, Maximize2, Minimize2, MessageCircle, MessageSquarePlus } from "lucide-react";
 import { GOVT_LOGO_SRC } from "@/config/brand";
 import { PrayerFlagBar } from "@/components/prayer-flag-bar";
 import { useChatTheme } from "@/config/chat-theme";
 import { useTypewriter } from "@/hooks/use-typewriter";
 import { withAlpha } from "@/lib/utils";
+import type { ChatHandle } from "@/components/chat";
 
 /* Markdown rendering and image/voice chat controls are only needed after a
    visitor opens the assistant. Deferring them materially reduces the landing
@@ -36,6 +37,7 @@ export function ChatWidget() {
   const [showHint, setShowHint] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const greeting = useTypewriter(GREETINGS);
+  const chatRef = useRef<ChatHandle>(null);
 
   /* Gentle one-time hint that fades in 3s after page load and never repeats.
      No bounce, no wave, no rainbow ring — just a quiet nudge the first time. */
@@ -380,6 +382,25 @@ export function ChatWidget() {
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
+                      onClick={() => chatRef.current?.startNewConversation()}
+                      className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+                      style={{ color: theme.pineOn }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = withAlpha(
+                          theme.pineOn,
+                          0.15,
+                        );
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                      aria-label="Start a new conversation"
+                      title="New chat"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() =>
                         setIsFullscreen((v) => (isMobileViewport ? false : !v))
                       }
@@ -434,7 +455,7 @@ export function ChatWidget() {
                 <Suspense
                   fallback={<div className="h-full" aria-busy="true" />}
                 >
-                  <Chat compact wide={isFullscreen} />
+                  <Chat ref={chatRef} compact wide={isFullscreen} />
                 </Suspense>
               </div>
             </div>

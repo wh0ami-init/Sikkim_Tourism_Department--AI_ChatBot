@@ -1104,13 +1104,13 @@ async def _tavily_search(
                 candidate = response.json()
                 candidate_results = (candidate or {}).get("results", [])
                 if any(
-                    (
-                        _is_official_sikkim_url((result or {}).get("url", ""))
-                        if official_only
-                        else _is_trusted_sikkim_source_url((result or {}).get("url", ""))
-                    )
-                    and (result or {}).get("content")
-                    for result in candidate_results
+                        (
+                                _is_official_sikkim_url((result or {}).get("url", ""))
+                                if official_only
+                                else _is_trusted_sikkim_source_url((result or {}).get("url", ""))
+                        )
+                        and (result or {}).get("content")
+                        for result in candidate_results
                 ):
                     data = candidate
                     break
@@ -1753,10 +1753,23 @@ async def stream_rag_response_with_image(
         ):
             text = chunk.content
 
-            if text:
-                yield sanitize_assistant_text(
-                    str(text)
+            if not text:
+                continue
+
+            # Gemini sometimes streams `content` as a list of content
+            # blocks (e.g. [{'type': 'text', 'text': '...'}]) instead of
+            # a plain string. Extract just the text so we never leak the
+            # raw block structure into the chat UI.
+            if isinstance(text, list):
+                text = "".join(
+                    block.get("text", "")
+                    for block in text
+                    if isinstance(block, dict)
+                    and block.get("type") == "text"
                 )
+
+            if text:
+                yield sanitize_assistant_text(str(text))
 
     except Exception as exc:
         logger.exception(
