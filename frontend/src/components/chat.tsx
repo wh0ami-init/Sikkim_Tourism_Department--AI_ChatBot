@@ -934,6 +934,10 @@ export const Chat = forwardRef<
      duplicate creation logic needed here. */
   const startNewConversation = useCallback(() => {
     abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    isSendingRef.current = false;
+    setIsStreaming(false);
+    setLastSentHadImage(false);
     setMessages([]);
     setConversationId(null);
     setConversationAccessToken(null);
@@ -943,6 +947,8 @@ export const Chat = forwardRef<
     setInput("");
     setPendingImage(null);
     setImageError(null);
+    shouldFollowStreamRef.current = true;
+    setShowJumpToLatest(false);
   }, []);
 
   useImperativeHandle(ref, () => ({ startNewConversation }), [
@@ -1103,6 +1109,7 @@ export const Chat = forwardRef<
     setInput("");
     setPendingImage(null);
     setImageError(null);
+    setChatError(null);
     setFailedTurn(null);
     setMessages((prev) =>
       prev.map((message) => ({ ...message, retry: false })),
