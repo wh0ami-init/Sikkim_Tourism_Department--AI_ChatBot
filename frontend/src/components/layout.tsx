@@ -27,6 +27,44 @@ function FooterLinks({ title, links }: { title: string; links: string[][] }) {
   return <section><h2 className="text-sm font-bold uppercase tracking-[0.14em] text-[#123f36] dark:text-white">{title}</h2><ul className="mt-4 space-y-2.5">{links.map(([label, href]) => <li key={label}><a href={href} target="_blank" rel="noopener noreferrer" className="group inline-flex items-center gap-1.5 text-sm text-[#315d53]/80 transition-colors hover:text-amber-700 dark:text-white/70 dark:hover:text-amber-200"><ChevronRight className="h-3.5 w-3.5 text-amber-600/70 transition-transform group-hover:translate-x-0.5 dark:text-amber-300/70" aria-hidden="true" /><span>{label}</span><ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" /></a></li>)}</ul></section>;
 }
 
+type SocialIconProps = {
+  className?: string;
+};
+
+function FacebookIcon({ className = "" }: SocialIconProps) {
+  return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M14.5 8.2h2.1V4.7c-.4-.1-1.8-.2-3.4-.2-3.3 0-5.5 2-5.5 5.6v3.1H4v3.9h3.7v9.4h4.5v-9.4h3.6l.6-3.9h-4.2v-2.7c0-1.1.3-1.9 2.3-1.9Z" />
+      </svg>
+  );
+}
+
+function XBrandIcon({ className = "" }: SocialIconProps) {
+  return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M13.9 10.5 21.4 2h-1.8l-6.5 7.4L7.9 2H2l7.9 11.3L2 22h1.8l6.9-7.8 5.5 7.8H22l-8.1-11.5Zm-2.4 2.7-.8-1.1L4.4 3.3h2.7l5.1 7.2.8 1.1 6.6 9.3h-2.7l-5.4-7.7Z" />
+      </svg>
+  );
+}
+
+function YouTubeIcon({ className = "" }: SocialIconProps) {
+  return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M21.6 7.1a2.8 2.8 0 0 0-2-2C17.9 4.7 12 4.7 12 4.7s-5.9 0-7.6.4a2.8 2.8 0 0 0-2 2A29 29 0 0 0 2 12a29 29 0 0 0 .4 4.9 2.8 2.8 0 0 0 2 2c1.7.4 7.6.4 7.6.4s5.9 0 7.6-.4a2.8 2.8 0 0 0 2-2A29 29 0 0 0 22 12a29 29 0 0 0-.4-4.9ZM10 15.1V8.9l5.2 3.1-5.2 3.1Z" />
+      </svg>
+  );
+}
+
+function InstagramIcon({ className = "" }: SocialIconProps) {
+  return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4Zm0 6.9a2.7 2.7 0 1 1 0-5.4 2.7 2.7 0 0 1 0 5.4Z" />
+        <path fill="currentColor" d="M16.4 6.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" />
+        <path fill="currentColor" fillRule="evenodd" d="M7.7 2.5h8.6a5.2 5.2 0 0 1 5.2 5.2v8.6a5.2 5.2 0 0 1-5.2 5.2H7.7a5.2 5.2 0 0 1-5.2-5.2V7.7a5.2 5.2 0 0 1 5.2-5.2Zm8.6 17.3a3.5 3.5 0 0 0 3.5-3.5V7.7a3.5 3.5 0 0 0-3.5-3.5H7.7a3.5 3.5 0 0 0-3.5 3.5v8.6a3.5 3.5 0 0 0 3.5 3.5h8.6Z" clipRule="evenodd" />
+      </svg>
+  );
+}
+
 type Theme = "light" | "dark";
 
 const footerInitiatives = [
@@ -53,6 +91,35 @@ const footerInformationLinks = [
   ["FAQs", "https://sikkimtourism.gov.in/"],
   ["Do's & Don'ts", "https://sikkimtourism.gov.in/do-and-do-not"],
 ];
+
+const socialLinks = [
+  {
+    href: "https://www.facebook.com/SikkimWhereNatureSmiles/",
+    label: "Sikkim Tourism on Facebook",
+    icon: FacebookIcon,
+    className: "bg-[#1877F2] text-white",
+  },
+  {
+    href: "https://x.com/TourismSikkim",
+    label: "Sikkim Tourism on X",
+    icon: XBrandIcon,
+    className: "bg-black text-white",
+  },
+  {
+    href: "https://www.youtube.com/@sikkimtourismgos",
+    label: "Sikkim Tourism on YouTube",
+    icon: YouTubeIcon,
+    className: "bg-[#FF0000] text-white",
+  },
+  {
+    href: "https://www.instagram.com/sikkim.tourism",
+    label: "Sikkim Tourism on Instagram",
+    icon: InstagramIcon,
+    className: "bg-[radial-gradient(circle_at_30%_105%,#feda75_0%,#fa7e1e_28%,#d62976_52%,#962fbf_74%,#4f5bd5_100%)] text-white",
+  },
+];
+
+const socialIconBaseClass = "flex h-9 w-9 items-center justify-center rounded-full shadow-sm ring-1 ring-white/25 transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#edf5f1] dark:focus-visible:ring-offset-[#0b342d]";
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "light";
@@ -482,7 +549,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-3"><img src={GOVT_LOGO_SRC} alt="Government of Sikkim emblem" className="h-14 w-14 rounded-full bg-white p-1.5 shadow-sm" /><div><p className="font-serif text-2xl font-bold tracking-tight">Sikkim Tourism Assistant</p><p className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-200">Where nature smiles</p></div></div>
                 <p className="mt-5 max-w-sm text-sm leading-6 text-[#315d53]/80 dark:text-white/70">The digital travel-information companion of the Tourism &amp; Civil Aviation Department, Government of Sikkim—helping visitors discover Sikkim with clarity and care.</p>
                 <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#315d53]/65 dark:text-white/55">Follow Us</p>
-                <div className="mt-2 flex gap-2"><a href="https://www.facebook.com/SikkimWhereNatureSmiles/" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on Facebook" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-xs font-bold transition hover:-translate-y-0.5">f</a><a href="https://x.com/TourismSikkim" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on X" className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold transition hover:-translate-y-0.5">X</a><a href="https://www.youtube.com/@sikkimtourismgos" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on YouTube" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF0000] text-xs font-bold transition hover:-translate-y-0.5">▶</a><a href="https://www.instagram.com/sikkim.tourism" target="_blank" rel="noopener noreferrer" aria-label="Sikkim Tourism on Instagram" className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-xs font-bold transition hover:-translate-y-0.5">◎</a></div>
+                <div className="mt-2 flex gap-2">
+                  {socialLinks.map(({ href, label, icon: Icon, className }) => (
+                      <a
+                          key={label}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={label}
+                          title={label}
+                          className={`${socialIconBaseClass} ${className}`}
+                      >
+                        <Icon className="h-4.5 w-4.5" />
+                      </a>
+                  ))}
+                </div>
               </section>
 
               <FooterLinks title="Important Links" links={footerImportantLinks} />
