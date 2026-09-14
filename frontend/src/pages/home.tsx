@@ -326,8 +326,8 @@ export default function Home() {
             >
               <source src={heroVideo.src} type="video/mp4" />
             </video>
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,21,18,0.08)_0%,rgba(5,21,18,0.28)_32%,rgba(5,21,18,0.48)_70%,rgba(244,248,246,0.9)_100%)] dark:bg-[linear-gradient(180deg,rgba(5,21,18,0.08)_0%,rgba(5,21,18,0.32)_32%,rgba(5,21,18,0.6)_70%,rgba(13,28,24,0.94)_100%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(233,169,59,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(39,122,107,0.28),transparent_34%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.06)_0%,rgba(0,0,0,0.2)_34%,rgba(0,0,0,0.42)_72%,rgba(244,248,246,0.82)_100%)] dark:bg-[linear-gradient(180deg,rgba(0,0,0,0.08)_0%,rgba(0,0,0,0.24)_34%,rgba(0,0,0,0.48)_72%,rgba(13,28,24,0.9)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,214,128,0.12),transparent_30%)]" />
           </div>
 
           <div className="relative container mx-auto flex min-h-[78vh] flex-1 flex-col items-center justify-between px-4 pb-6 pt-24 text-center sm:min-h-screen sm:pb-10 sm:pt-28">
