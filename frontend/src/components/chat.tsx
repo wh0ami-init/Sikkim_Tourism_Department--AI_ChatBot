@@ -836,6 +836,13 @@ export const Chat = forwardRef<
     clientMessageId: string;
   } | null>(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const conversationIdentityRef = useRef<{
+    id: string | null;
+    accessToken: string | null;
+  }>({
+    id: conversationId,
+    accessToken: conversationAccessToken,
+  });
 
   // Voice input state
   const [isListening, setIsListening] = useState(false);
@@ -855,6 +862,13 @@ export const Chat = forwardRef<
   // the same stale `isStreaming = false`. A ref is written synchronously,
   // so the second call sees it immediately — no render round-trip needed.
   const isSendingRef = useRef(false);
+
+  useEffect(() => {
+    conversationIdentityRef.current = {
+      id: conversationId,
+      accessToken: conversationAccessToken,
+    };
+  }, [conversationId, conversationAccessToken]);
 
   // Check for Web Speech API support on mount
   useEffect(() => {
@@ -885,6 +899,12 @@ export const Chat = forwardRef<
       try {
         const res = await createConversation();
         if (cancelled) return;
+        const currentIdentity = conversationIdentityRef.current;
+        if (currentIdentity.id || currentIdentity.accessToken) return;
+        conversationIdentityRef.current = {
+          id: res.conversation.id,
+          accessToken: res.accessToken,
+        };
         setConversationId(res.conversation.id);
         setConversationAccessToken(res.accessToken);
         writeStoredConversation(res.conversation.id, res.accessToken);
@@ -914,13 +934,28 @@ export const Chat = forwardRef<
     (async () => {
       try {
         const res = await fetchConversation(conversationId, conversationAccessToken);
-        setMessages(res.messages);
+        const currentIdentity = conversationIdentityRef.current;
+        if (
+          currentIdentity.id !== conversationId ||
+          currentIdentity.accessToken !== conversationAccessToken
+        ) {
+          return;
+        }
+        setMessages((prev) => (prev.length > 0 ? prev : res.messages));
       } catch (e) {
+        const currentIdentity = conversationIdentityRef.current;
+        if (
+          currentIdentity.id !== conversationId ||
+          currentIdentity.accessToken !== conversationAccessToken
+        ) {
+          return;
+        }
         // The stored conversation is gone or the token's stale (e.g. server
         // restarted, TTL cleanup). Drop it and fall back to a fresh one —
         // same effect as if nothing had been stored to begin with.
         console.error("Failed to resume stored conversation", e);
         writeStoredConversation(null, null);
+        conversationIdentityRef.current = { id: null, accessToken: null };
         setConversationId(null);
         setConversationAccessToken(null);
       }
@@ -936,6 +971,7 @@ export const Chat = forwardRef<
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     isSendingRef.current = false;
+    conversationIdentityRef.current = { id: null, accessToken: null };
     setIsStreaming(false);
     setLastSentHadImage(false);
     setMessages([]);
@@ -1121,13 +1157,17 @@ export const Chat = forwardRef<
       setIsListening(false);
     }
 
-    let currentConvId = conversationId;
-    let currentAccessToken = conversationAccessToken;
+    let currentConvId = conversationIdentityRef.current.id;
+    let currentAccessToken = conversationIdentityRef.current.accessToken;
 
     if (!currentConvId || !currentAccessToken) {
       try {
         const res = await createConversation();
 
+        conversationIdentityRef.current = {
+          id: res.conversation.id,
+          accessToken: res.accessToken,
+        };
         setConversationId(res.conversation.id);
         setConversationAccessToken(res.accessToken);
         writeStoredConversation(res.conversation.id, res.accessToken);
